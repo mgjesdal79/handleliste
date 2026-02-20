@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handleliste</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+  :root {
+    --bg: #f5f2ec; --surface: #ffffff; --border: #e0d9ce;
+    --text: #1a1814; --muted: #8a8070;
+    --accent-kiwi: #2d8a3e; --accent-rema: #003087; --accent-meny: #cc1b1b;
+    --highlight-kiwi: #d6eedd; --highlight-kiwi-border: #7ec99a;
+    --highlight-rema: #d6e4f5; --highlight-rema-border: #7aaedd;
+    --highlight-meny: #fadadd; --highlight-meny-border: #e08080;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 0 0 80px; }
+
+  /* ROOM SCREEN */
+  .room-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 32px 24px; max-width: 400px; margin: 0 auto;
+  }
+  .room-screen h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2rem; letter-spacing: -0.03em; margin-bottom: 8px; }
+  .room-screen p { color: var(--muted); font-size: 0.9rem; margin-bottom: 32px; text-align: center; }
+  .room-input {
+    width: 100%; padding: 14px; border: 2px solid var(--border); border-radius: var(--radius);
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.2rem;
+    text-align: center; letter-spacing: 0.15em; text-transform: uppercase;
+    background: var(--surface); color: var(--text); outline: none; margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+  .room-input:focus { border-color: var(--accent-kiwi); }
+  .room-btn {
+    width: 100%; padding: 14px; border-radius: var(--radius); border: none;
+    background: var(--text); color: white; font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 1rem; cursor: pointer; margin-bottom: 10px;
+    transition: opacity 0.15s;
+  }
+  .room-btn:hover { opacity: 0.85; }
+  .room-btn.secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .room-divider { color: var(--muted); font-size: 0.8rem; margin: 8px 0; }
+  .room-code-display {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem;
+    color: var(--muted); letter-spacing: 0.1em; margin-top: 8px; text-align: center;
+  }
+  .room-code-display span { color: var(--text); }
+
+  /* TOP BAR */
+  .topbar {
+    position: sticky; top: 0; z-index: 50; background: var(--bg);
+    border-bottom: 1px solid var(--border); padding: 12px 16px;
+    max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 10px;
+  }
+  .topbar h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.3rem; letter-spacing: -0.03em; flex: 1; }
+  .store-tabs { display: flex; gap: 6px; }
+  .store-btn {
+    padding: 6px 14px; border-radius: 100px; border: 2px solid var(--border);
+    background: transparent; font-family: 'Syne', sans-serif; font-weight: 600;
+    font-size: 0.78rem; cursor: pointer; color: var(--muted); transition: all 0.18s;
+  }
+  .store-btn.active[data-store="kiwi"] { background: var(--accent-kiwi); border-color: var(--accent-kiwi); color: white; }
+  .store-btn.active[data-store="rema"] { background: var(--accent-rema); border-color: var(--accent-rema); color: white; }
+  .store-btn.active[data-store="meny"] { background: var(--accent-meny); border-color: var(--accent-meny); color: white; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer; font-size: 1.3rem;
+    padding: 2px 6px; border-radius: 8px; color: var(--text); transition: background 0.15s; line-height: 1;
+  }
+  .icon-btn:hover { background: var(--border); }
+
+  /* SYNC INDICATOR */
+  .sync-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--muted);
+    flex-shrink: 0; transition: background 0.3s;
+  }
+  .sync-dot.synced { background: var(--accent-kiwi); }
+  .sync-dot.syncing { background: #f0a500; animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--accent-meny); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* SLIDE PANEL */
+  .slide-panel {
+    max-width: 640px; margin: 0 auto; overflow: hidden; max-height: 0;
+    transition: max-height 0.3s ease; background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  .slide-panel.open { max-height: 500px; }
+  .slide-panel.open.tall { max-height: 80vh; overflow-y: auto; }
+  .slide-panel-inner { padding: 16px; }
+  .panel-tabs { display: flex; gap: 6px; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+  .panel-tab {
+    padding: 5px 14px; border-radius: 100px; border: 1px solid var(--border);
+    background: transparent; font-family: 'Syne', sans-serif; font-weight: 600;
+    font-size: 0.78rem; cursor: pointer; color: var(--muted);
+  }
+  .panel-tab.active { background: var(--text); color: white; border-color: var(--text); }
+  .panel-section { display: none; }
+  .panel-section.active { display: block; }
+
+  textarea {
+    width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.88rem; line-height: 1.6;
+    background: var(--bg); color: var(--text); resize: vertical; min-height: 100px;
+    outline: none; transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: var(--accent-kiwi); }
+  .export-textarea { min-height: 80px !important; font-size: 0.75rem !important; font-family: monospace !important; }
+  .panel-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .action-btn {
+    flex: 1; padding: 10px; border-radius: 8px; border: none;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .action-btn.primary { background: var(--text); color: white; }
+  .action-btn.secondary { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+  .action-btn:hover { opacity: 0.85; }
+
+  /* LIST */
+  #result { max-width: 640px; margin: 0 auto; padding: 8px 16px 16px; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .emoji { font-size: 2.5rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.9rem; line-height: 1.6; }
+  .section-header {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.72rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+    padding: 10px 0 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px; margin-top: 18px;
+  }
+  .section-header.in-vogna { margin-top: 32px; opacity: 0.5; }
+  .item-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px;
+    margin-bottom: 3px; cursor: pointer; transition: background 0.15s; border: 1px solid transparent;
+  }
+  .item-row:hover { background: var(--bg); }
+  .item-row.highlighted { border-color: transparent; }
+  .item-row.highlighted[data-store="kiwi"] { background: var(--highlight-kiwi); border-color: var(--highlight-kiwi-border); }
+  .item-row.highlighted[data-store="rema"] { background: var(--highlight-rema); border-color: var(--highlight-rema-border); }
+  .item-row.highlighted[data-store="meny"] { background: var(--highlight-meny); border-color: var(--highlight-meny-border); }
+  .item-name { flex: 1; font-size: 0.95rem; }
+  .item-row.in-vogna .item-name { text-decoration: line-through; color: var(--muted); }
+  .store-dots { display: flex; gap: 5px; align-items: center; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; opacity: 0.18; cursor: pointer; transition: opacity 0.15s; flex-shrink: 0; }
+  .dot.active { opacity: 1; }
+  .dot[data-s="kiwi"] { background: var(--accent-kiwi); }
+  .dot[data-s="rema"] { background: var(--accent-rema); }
+  .dot[data-s="meny"] { background: var(--accent-meny); }
+  .check-circle {
+    width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .item-row.in-vogna .check-circle { background: var(--muted); border-color: var(--muted); }
+  .check-circle::after {
+    content: ''; display: block; width: 5px; height: 9px;
+    border: 2px solid white; border-top: none; border-left: none;
+    transform: rotate(45deg) translate(-1px, -1px); opacity: 0;
+  }
+  .item-row.in-vogna .check-circle::after { opacity: 1; }
+  .place-btn {
+    font-size: 0.72rem; padding: 2px 8px; border-radius: 100px;
+    border: 1px dashed var(--border); background: transparent; color: var(--muted);
+    cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; flex-shrink: 0;
+  }
+  .place-btn:hover { border-color: var(--accent-kiwi); color: var(--accent-kiwi); }
+  .edit-btn { background: none; border: none; cursor: pointer; color: var(--border); font-size: 0.82rem; padding: 0 2px; flex-shrink: 0; line-height: 1; transition: color 0.15s; }
+  .edit-btn:hover { color: var(--muted); }
+
+  /* BOTTOM BAR */
+  .bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface);
+    border-top: 1px solid var(--border); padding: 10px 16px; display: flex; gap: 8px;
+    max-width: 640px; margin: 0 auto;
+  }
+  .bottom-btn {
+    flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; font-family: 'Syne', sans-serif; font-weight: 600;
+    font-size: 0.8rem; cursor: pointer; color: var(--muted); transition: all 0.15s;
+  }
+  .bottom-btn:hover { background: var(--bg); }
+  .bottom-btn.danger { color: var(--accent-meny); border-color: var(--accent-meny); }
+  .bottom-btn.danger:hover { background: var(--highlight-meny); }
+
+  /* MODAL */
+  .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: flex-end; justify-content: center; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 16px 16px 0 0; padding: 20px 16px 36px; width: 100%; max-width: 640px; max-height: 80vh; overflow-y: auto; }
+  .modal-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; }
+  .modal-item-name { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
+  .section-option {
+    display: block; width: 100%; text-align: left; padding: 11px 14px; margin-bottom: 4px;
+    border-radius: 8px; border: 1px solid var(--border); background: transparent;
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; transition: all 0.15s; color: var(--text);
+  }
+  .section-option:hover { background: var(--highlight-kiwi); border-color: var(--highlight-kiwi-border); }
+  .modal-cancel {
+    display: block; width: 100%; margin-top: 10px; padding: 11px; border-radius: 8px;
+    border: none; background: var(--bg); font-family: 'Syne', sans-serif; font-weight: 600;
+    font-size: 0.85rem; cursor: pointer; color: var(--muted);
+  }
+
+  /* CATEGORY EDITOR */
+  .cat-list { display: flex; flex-direction: column; gap: 6px; }
+  .cat-row {
+    display: flex; align-items: center; gap: 8px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+    cursor: grab; user-select: none;
+  }
+  .cat-row.dragging { opacity: 0.4; }
+  .cat-row.drag-over { border-color: var(--accent-kiwi); background: var(--highlight-kiwi); }
+  .drag-handle { color: var(--border); font-size: 1rem; cursor: grab; flex-shrink: 0; }
+  .cat-name-input {
+    flex: 1; border: none; background: transparent; font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem; color: var(--text); outline: none; min-width: 0;
+  }
+  .cat-delete-btn { background: none; border: none; cursor: pointer; color: var(--border); font-size: 1rem; padding: 0 2px; flex-shrink: 0; transition: color 0.15s; }
+  .cat-delete-btn:hover { color: var(--accent-meny); }
+  .cat-save-btn {
+    width: 100%; margin-top: 10px; padding: 10px; border-radius: 8px; border: none;
+    background: var(--accent-kiwi); color: white; font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 0.85rem; cursor: pointer;
+  }
+
+  /* SETTINGS ROW */
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem;
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-label { color: var(--muted); font-size: 0.75rem; font-family: 'Syne', sans-serif; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  .settings-value { font-weight: 500; font-size: 0.88rem; }
+  .settings-link { color: var(--accent-rema); font-size: 0.8rem; cursor: pointer; text-decoration: underline; background: none; border: none; font-family: 'DM Sans', sans-serif; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ROOM SCREEN -->
+<div id="roomScreen" class="room-screen">
+  <h1>🛒 Handleliste</h1>
+  <p>Skriv inn rom-koden din for å koble til den delte handlelisten.</p>
+  <input class="room-input" id="roomCodeInput" maxlength="6" placeholder="KODE" autocomplete="off" autocapitalize="characters" />
+  <button class="room-btn" onclick="joinRoom()">Koble til</button>
+  <div class="room-divider">eller</div>
+  <button class="room-btn secondary" onclick="createRoom()">Lag nytt rom</button>
+  <div class="room-code-display" id="newRoomDisplay"></div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" class="hidden">
+  <div class="topbar">
+    <h1>🛒</h1>
+    <div class="store-tabs">
+      <button class="store-btn active" data-store="kiwi">Kiwi</button>
+      <button class="store-btn" data-store="rema">Rema</button>
+      <button class="store-btn" data-store="meny">Meny</button>
+    </div>
+    <div class="sync-dot" id="syncDot" title="Synkroniseringsstatus"></div>
+    <button class="icon-btn" onclick="togglePanel('add')" title="Legg til varer">＋</button>
+    <button class="icon-btn" onclick="togglePanel('settings')" title="Innstillinger">⚙️</button>
+  </div>
+
+  <!-- ADD PANEL -->
+  <div class="slide-panel" id="panel-add">
+    <div class="slide-panel-inner">
+      <textarea id="addInput" placeholder="Lim inn fra OurGroceries, eller skriv én vare per linje..."></textarea>
+      <div class="panel-actions">
+        <button class="action-btn primary" onclick="addItems()">Last inn</button>
+        <button class="action-btn secondary" onclick="closePanel()">Avbryt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS PANEL -->
+  <div class="slide-panel" id="panel-settings">
+    <div class="slide-panel-inner">
+      <div class="panel-tabs">
+        <button class="panel-tab active" data-tab="rom" onclick="switchTab('rom')">Rom</button>
+        <button class="panel-tab" data-tab="categories" onclick="switchTab('categories')">Kategorier</button>
+        <button class="panel-tab" data-tab="export" onclick="switchTab('export')">Eksporter</button>
+        <button class="panel-tab" data-tab="import" onclick="switchTab('import')">Importer</button>
+      </div>
+      <div class="panel-section active" id="tab-rom">
+        <div class="settings-row">
+          <span class="settings-label">Rom-kode</span>
+          <span class="settings-value" id="displayRoomCode">–</span>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Del med konen</span>
+          <button class="settings-link" onclick="copyRoomCode()">Kopier rom-kode</button>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Bytt rom</span>
+          <button class="settings-link" onclick="leaveRoom()">Logg ut av rom</button>
+        </div>
+      </div>
+      <div class="panel-section" id="tab-categories">
+        <div class="cat-list" id="catList"></div>
+        <button class="cat-save-btn" onclick="saveCategories()">Lagre kategorier</button>
+      </div>
+      <div class="panel-section" id="tab-export">
+        <textarea class="export-textarea" id="exportText" readonly placeholder="Trykk Eksporter..."></textarea>
+        <div class="panel-actions">
+          <button class="action-btn primary" onclick="doExport()">Eksporter</button>
+          <button class="action-btn secondary" onclick="copyExport()">Kopier</button>
+        </div>
+      </div>
+      <div class="panel-section" id="tab-import">
+        <textarea id="importText" placeholder="Lim inn preferanser-JSON her..."></textarea>
+        <div class="panel-actions">
+          <button class="action-btn primary" onclick="doImport()">Importer</button>
+          <button class="action-btn secondary" onclick="closePanel()">Avbryt</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="bottom-bar" id="bottomBar" style="display:none">
+    <button class="bottom-btn danger" onclick="toemVogna()">Tøm Vognå</button>
+    <button class="bottom-btn" onclick="document.getElementById('confirmModal').classList.add('open')">Ny handel</button>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal">
+    <div class="modal-title">Ny handel</div>
+    <div class="modal-item-name">Nullstille hele handlelisten? Preferanser og butikkvalg beholdes.</div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button class="action-btn primary" style="flex:1" onclick="nyHandel()">Ja, nullstill</button>
+      <button class="action-btn secondary" style="flex:1" onclick="document.getElementById('confirmModal').classList.remove('open')">Avbryt</button>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION MODAL -->
+<div class="modal-backdrop" id="sectionModal">
+  <div class="modal">
+    <div class="modal-title">Hvor i Kiwi finner du denne varen?</div>
+    <div class="modal-item-name" id="modalItemName"></div>
+    <div id="sectionOptions"></div>
+    <button class="modal-cancel" onclick="closeModal()">Avbryt</button>
+  </div>
+</div>
+
+<script>
+// ── SUPABASE CONFIG ──
+const SUPABASE_URL = 'https://vkhktataxypuobrzslbi.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_iUwAfMrw1Ckrxbf1ZDLINA_xKUGyscg';
+
+async function sbFetch(path, method = 'GET', body = null) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    method,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'resolution=merge-duplicates' : ''
+    },
+    body: body ? JSON.stringify(body) : null
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// ── DEFAULT SECTIONS ──
+const defaultSections = [
+  { id: 'k0',  label: 'Småbrus',              keywords: ['brus','cola','pepsi','fanta','soda','mineralvann','juice','smoothie','saft'] },
+  { id: 'k1',  label: 'Frukt og grønt',        keywords: ['frukt','grønt','eple','banan','appelsin','tomat','agurk','løk','hvitløk','salat','paprika','gulrot','sitron','lime','jordbær','blåbær','mango','avokado','spinat','brokkoli','blomkål','squash','sopp','purre','selleri'] },
+  { id: 'k2',  label: 'Pålegg',                keywords: ['syltetøy','makrell','honning','jam','marmelade','peanøtt','nøttesmør','leverpostei','skinke','salami','servelat','kaviar','tunfisk','sardiner'] },
+  { id: 'k3',  label: 'Ost',                   keywords: ['ost','jarlsberg','norvegia','brie','camembert','fetaost','feta','kremost','brunost','gudbrandsdalsost'] },
+  { id: 'k4',  label: 'Kjøtt',                 keywords: ['kjøtt','kylling','biff','svin','bacon','pølse','laks','fisk','reke','koteletter','karbonader','hamburgere'] },
+  { id: 'k5',  label: 'Meieri og krydder',     keywords: ['melk','fløte','rømme','yoghurt','ketchup','sennep','sprø løk','krydder','pepper','salt','oregano','basilikum','paprikapulver','karri','timian','rosmarin','ingefær','kanel','soya','tabasco','sukker','vanilje'] },
+  { id: 'k6',  label: 'Taco og pasta og sånt', keywords: ['taco','pasta','nudler','ris','spaghetti','penne','lasagne','makaroni','couscous','quinoa','linser','bønner','kikerter','salsa','tacokrydder','wrap','tortilla'] },
+  { id: 'k7',  label: 'Egg og majones',        keywords: ['egg','majones'] },
+  { id: 'k8',  label: 'Frysevarer',            keywords: ['frys','frossen','frosne','iskrem','pommes','frites'] },
+  { id: 'k9',  label: 'Hygiene',               keywords: ['toalettpapir','tørkerull','tannkrem','tannbørste','shampoo','såpe','deodorant','barbering','hårvask','vaskemiddel','oppvask','oppvaskmiddel','rengjøring','klut'] },
+  { id: 'k10', label: 'Hermetikk og dessert',  keywords: ['tomatsaus','ananas','hermetikk','dessert','puddingpulver','gelatin','kakao','sjokoladepulver','brun saus','hvit saus'] },
+  { id: 'k11', label: 'Bakevarer',             keywords: ['brød','knekkebrød','rundstykke','lefse','loff','bagett','croissant','mel','bakepulver','gjær','havregryn','müsli','frokostblanding','cornflakes'] },
+  { id: 'k12', label: 'Digg',                  keywords: ['sjokolade','snop','godteri','chips','popcorn','nøtter','mandel','valnøtt','cashew','rosiner','kjeks','småkake','kake','kakemiks'] },
+];
+
+// ── STATE ──
+let kiwiSections = JSON.parse(JSON.stringify(defaultSections));
+let listItems = [];
+let storeData = {};
+let checkedItems = {};
+let currentStore = 'kiwi';
+let currentRoomCode = null;
+let openPanel = null;
+let saveTimeout = null;
+let pollInterval = null;
+
+// ── ROOM ──
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length: 5}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+async function createRoom() {
+  const code = generateCode();
+  setSyncStatus('syncing');
+  try {
+    await sbFetch('list_items', 'POST', {
+      room_code: code,
+      data: JSON.stringify({ items: [], storeData: {}, checkedItems: {} }),
+      categories: JSON.stringify(defaultSections)
+    });
+    document.getElementById('newRoomDisplay').innerHTML = `Ny rom-kode: <span>${code}</span> – del denne med konen din!`;
+    document.getElementById('roomCodeInput').value = code;
+    await joinRoom();
+  } catch(e) {
+    setSyncStatus('error');
+    alert('Kunne ikke opprette rom. Sjekk tilkoblingen.');
+  }
+}
+
+async function joinRoom() {
+  const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+  if (!code) return;
+  setSyncStatus('syncing');
+  try {
+    const rows = await sbFetch(`list_items?room_code=eq.${code}&select=*`);
+    if (!rows || rows.length === 0) {
+      alert('Fant ikke rom med kode: ' + code + '. Sjekk koden eller lag et nytt rom.');
+      setSyncStatus('error');
+      return;
+    }
+    currentRoomCode = code;
+    localStorage.setItem('lastRoomCode', code);
+    loadFromRow(rows[0]);
+    showApp();
+    startPolling();
+  } catch(e) {
+    setSyncStatus('error');
+    alert('Tilkoblingsfeil. Prøv igjen.');
+  }
+}
+
+function loadFromRow(row) {
+  try {
+    const d = JSON.parse(row.data || '{}');
+    listItems = d.items || [];
+    storeData = d.storeData || {};
+    checkedItems = d.checkedItems || {};
+  } catch(e) {}
+  try {
+    const cats = JSON.parse(row.categories || 'null');
+    if (cats) kiwiSections.splice(0, kiwiSections.length, ...cats);
+  } catch(e) {}
+}
+
+function showApp() {
+  document.getElementById('roomScreen').classList.add('hidden');
+  document.getElementById('mainApp').classList.remove('hidden');
+  document.getElementById('displayRoomCode').textContent = currentRoomCode;
+  setSyncStatus('synced');
+  renderList();
+}
+
+function leaveRoom() {
+  clearInterval(pollInterval);
+  currentRoomCode = null;
+  localStorage.removeItem('lastRoomCode');
+  listItems = []; storeData = {}; checkedItems = {};
+  document.getElementById('mainApp').classList.add('hidden');
+  document.getElementById('roomScreen').classList.remove('hidden');
+  document.getElementById('roomCodeInput').value = '';
+  closePanel();
+}
+
+function copyRoomCode() {
+  navigator.clipboard.writeText(currentRoomCode).catch(() => {});
+  const btn = document.querySelector('#tab-rom .settings-link');
+  btn.textContent = '✓ Kopiert!';
+  setTimeout(() => btn.textContent = 'Kopier rom-kode', 2000);
+}
+
+// ── SYNC ──
+function setSyncStatus(status) {
+  const dot = document.getElementById('syncDot');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + status;
+}
+
+async function saveToCloud() {
+  if (!currentRoomCode) return;
+  setSyncStatus('syncing');
+  try {
+    await sbFetch(`list_items?room_code=eq.${currentRoomCode}`, 'PATCH', {
+      data: JSON.stringify({ items: listItems, storeData, checkedItems }),
+      categories: JSON.stringify(kiwiSections)
+    });
+    setSyncStatus('synced');
+  } catch(e) {
+    setSyncStatus('error');
+  }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveToCloud, 800);
+}
+
+let lastDataHash = null;
+async function pollCloud() {
+  if (!currentRoomCode) return;
+  try {
+    const rows = await sbFetch(`list_items?room_code=eq.${currentRoomCode}&select=data,categories`);
+    if (!rows || !rows[0]) return;
+    const hash = rows[0].data + (rows[0].categories || '');
+    if (hash !== lastDataHash) {
+      lastDataHash = hash;
+      loadFromRow(rows[0]);
+      renderList();
+      setSyncStatus('synced');
+    }
+  } catch(e) { setSyncStatus('error'); }
+}
+
+function startPolling() {
+  clearInterval(pollInterval);
+  pollInterval = setInterval(pollCloud, 5000);
+}
+
+// ── PANEL ──
+let dragSrcIdx = null;
+function togglePanel(name) {
+  if (openPanel === name) { closePanel(); return; }
+  ['add','settings'].forEach(p => document.getElementById('panel-' + p).classList.remove('open'));
+  openPanel = name;
+  document.getElementById('panel-' + name).classList.add('open');
+  if (name === 'settings') switchTab('rom');
+}
+function closePanel() {
+  if (openPanel) document.getElementById('panel-' + openPanel).classList.remove('open');
+  openPanel = null;
+}
+function switchTab(tab) {
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.panel-section').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
+  const panel = document.getElementById('panel-settings');
+  panel.classList.toggle('tall', tab === 'categories');
+  if (tab === 'categories') renderCatEditor();
+}
+
+// ── LIST PARSING ──
+function parseLines(raw) {
+  const lines = raw.split('\n').map(l => l.trim()).filter(l => l);
+  const result = []; let cat = 'Ukategorisert';
+  for (const line of lines) {
+    const isHeader = line.split(' ').length <= 5 && /^[A-ZÆØÅ]/.test(line) && !/[,\d]/.test(line);
+    if (isHeader) cat = line;
+    else result.push({ text: line, cat });
+  }
+  return result;
+}
+
+function addItems() {
+  const raw = document.getElementById('addInput').value.trim();
+  if (!raw) return;
+  const newItems = parseLines(raw);
+  const existing = new Set(listItems.map(i => i.text.toLowerCase().trim()));
+  for (const item of newItems) {
+    if (!existing.has(item.text.toLowerCase().trim())) {
+      listItems.push(item); existing.add(item.text.toLowerCase().trim());
+    }
+  }
+  document.getElementById('addInput').value = '';
+  closePanel();
+  renderList();
+  scheduleSave();
+}
+
+function toemVogna() {
+  const toRemove = new Set(Object.keys(checkedItems).filter(k => checkedItems[k]));
+  listItems = listItems.filter(i => !toRemove.has(i.text.toLowerCase().trim()));
+  checkedItems = {};
+  renderList();
+  scheduleSave();
+}
+
+function nyHandel() {
+  document.getElementById('confirmModal').classList.remove('open');
+  listItems = []; checkedItems = {};
+  renderList();
+  scheduleSave();
+}
+
+// ── RENDER ──
+function guessKiwiSection(text) {
+  const lower = text.toLowerCase();
+  for (const sec of kiwiSections) {
+    if (sec.keywords && sec.keywords.some(k => lower.includes(k))) return sec.id;
+  }
+  return null;
+}
+
+function isHighlighted(itemText, store) {
+  const key = itemText.toLowerCase().trim();
+  const stored = storeData[key];
+  if (stored && stored.stores && Array.isArray(stored.stores)) return stored.stores.includes(store);
+  return store === 'kiwi';
+}
+
+function renderList() {
+  const container = document.getElementById('result');
+  const bottomBar = document.getElementById('bottomBar');
+  if (!container) return;
+  if (listItems.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="emoji">🛒</div><p>Trykk <strong>＋</strong> øverst til høyre<br>for å laste inn handlelisten din.</p></div>`;
+    bottomBar.style.display = 'none'; return;
+  }
+  bottomBar.style.display = 'flex';
+  currentStore === 'kiwi' ? renderKiwi(container) : renderGeneric(container);
+}
+
+function renderKiwi(container) {
+  const sections = {}, unknown = [], vogna = [];
+  for (const item of listItems) {
+    const key = item.text.toLowerCase().trim();
+    const stored = storeData[key];
+    const sectionId = stored && stored.kiwiSection ? stored.kiwiSection : guessKiwiSection(item.text);
+    const highlight = isHighlighted(item.text, 'kiwi');
+    if (checkedItems[key]) { vogna.push({ ...item, sectionId, highlight }); continue; }
+    if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId, highlight }); }
+    else unknown.push({ ...item, highlight });
+  }
+  let html = '';
+  for (let i = 0; i < kiwiSections.length; i++) {
+    const sec = kiwiSections[i];
+    const items = sections[sec.id];
+    if (!items || !items.length) continue;
+    html += `<div class="section-header">${i} · ${sec.label}</div>`;
+    items.forEach(item => html += renderItem(item, 'kiwi'));
+  }
+  if (unknown.length) { html += `<div class="section-header">Ukjent plassering</div>`; unknown.forEach(item => html += renderItem(item, 'kiwi')); }
+  if (vogna.length) { html += `<div class="section-header in-vogna">✓ Vognå</div>`; vogna.forEach(item => html += renderItem(item, 'kiwi', true)); }
+  container.innerHTML = html; attachEvents();
+}
+
+function renderGeneric(container) {
+  let html = '', lastCat = null; const vogna = [];
+  for (const item of listItems) {
+    const key = item.text.toLowerCase().trim();
+    if (checkedItems[key]) { vogna.push(item); continue; }
+    if (item.cat !== lastCat) { html += `<div class="section-header">${item.cat}</div>`; lastCat = item.cat; }
+    html += renderItem({ ...item, highlight: isHighlighted(item.text, currentStore) }, currentStore);
+  }
+  if (vogna.length) { html += `<div class="section-header in-vogna">✓ Vognå</div>`; vogna.forEach(item => html += renderItem({ ...item, highlight: false }, currentStore, true)); }
+  container.innerHTML = html; attachEvents();
+}
+
+function renderItem(item, store, inVogna = false) {
+  const key = encodeURIComponent(item.text.toLowerCase().trim());
+  const highlight = item.highlight && !inVogna ? 'highlighted' : '';
+  const vognaClass = inVogna ? 'in-vogna' : '';
+  const dots = ['kiwi','rema','meny'].map(s => {
+    const stored = storeData[item.text.toLowerCase().trim()];
+    const active = stored && stored.stores && Array.isArray(stored.stores) ? stored.stores.includes(s) : s === 'kiwi';
+    return `<span class="dot ${active ? 'active' : ''}" data-s="${s}" data-item="${key}"></span>`;
+  }).join('');
+  const isUnknown = store === 'kiwi' && !item.sectionId;
+  let actionBtn = '';
+  if (!inVogna) {
+    if (isUnknown) actionBtn = `<button class="place-btn" onclick="event.stopPropagation();openSectionPicker('${key}')">Plasser</button>`;
+    else if (store === 'kiwi') actionBtn = `<button class="edit-btn" onclick="event.stopPropagation();openSectionPicker('${key}')">✏️</button>`;
+  }
+  return `<div class="item-row ${highlight} ${vognaClass}" data-item="${key}" data-store="${store}">
+    <div class="check-circle"></div>
+    <span class="item-name">${item.text}</span>
+    ${actionBtn}
+    <div class="store-dots">${dots}</div>
+  </div>`;
+}
+
+function attachEvents() {
+  document.querySelectorAll('.item-row').forEach(row => {
+    row.addEventListener('click', e => {
+      if (['dot','edit-btn','place-btn'].some(c => e.target.classList.contains(c))) return;
+      const key = decodeURIComponent(row.dataset.item);
+      checkedItems[key] = !checkedItems[key];
+      renderList(); scheduleSave();
+    });
+  });
+  document.querySelectorAll('.dot').forEach(dot => {
+    dot.addEventListener('click', e => {
+      e.stopPropagation();
+      const itemKey = decodeURIComponent(dot.dataset.item);
+      const store = dot.dataset.s;
+      if (!storeData[itemKey]) storeData[itemKey] = { stores: ['kiwi'] };
+      if (!storeData[itemKey].stores) storeData[itemKey].stores = ['kiwi'];
+      const idx = storeData[itemKey].stores.indexOf(store);
+      if (idx > -1) storeData[itemKey].stores.splice(idx, 1);
+      else storeData[itemKey].stores.push(store);
+      renderList(); scheduleSave();
+    });
+  });
+}
+
+// ── STORE BUTTONS ──
+document.querySelectorAll('.store-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.store-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentStore = btn.dataset.store;
+    renderList();
+  });
+});
+
+// ── EXPORT / IMPORT ──
+function doExport() { document.getElementById('exportText').value = JSON.stringify({ storeData, categories: kiwiSections }, null, 2); }
+function copyExport() {
+  if (!document.getElementById('exportText').value) doExport();
+  const ta = document.getElementById('exportText');
+  ta.select(); document.execCommand('copy');
+  const btn = document.querySelector('#tab-export .action-btn.secondary');
+  btn.textContent = '✓ Kopiert!';
+  setTimeout(() => btn.textContent = 'Kopier', 2000);
+}
+function doImport() {
+  try {
+    const parsed = JSON.parse(document.getElementById('importText').value.trim());
+    if (parsed.storeData) storeData = parsed.storeData;
+    if (parsed.categories) kiwiSections.splice(0, kiwiSections.length, ...parsed.categories);
+    document.getElementById('importText').value = '';
+    closePanel(); renderList(); scheduleSave();
+  } catch(e) { alert('Feil format – prøv igjen.'); }
+}
+
+// ── CATEGORY EDITOR ──
+function renderCatEditor() {
+  const list = document.getElementById('catList');
+  list.innerHTML = kiwiSections.map((sec, i) => `
+    <div class="cat-row" draggable="true" data-idx="${i}"
+      ondragstart="dragStart(event,${i})" ondragover="dragOver(event,${i})"
+      ondrop="dragDrop(event,${i})" ondragend="dragEnd()">
+      <span class="drag-handle">⠿</span>
+      <span style="color:var(--muted);font-size:0.78rem;flex-shrink:0;min-width:18px">${i}</span>
+      <input class="cat-name-input" value="${sec.label.replace(/"/g,'&quot;')}" data-idx="${i}"
+        onchange="kiwiSections[${i}].label=this.value">
+      <button class="cat-delete-btn" onclick="deleteCategory(${i})">✕</button>
+    </div>`).join('');
+}
+function dragStart(e, idx) { dragSrcIdx = idx; e.dataTransfer.effectAllowed = 'move'; }
+function dragOver(e, idx) {
+  e.preventDefault();
+  document.querySelectorAll('.cat-row').forEach(r => r.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+function dragDrop(e, idx) {
+  e.preventDefault();
+  if (dragSrcIdx === null || dragSrcIdx === idx) return;
+  const moved = kiwiSections.splice(dragSrcIdx, 1)[0];
+  kiwiSections.splice(idx, 0, moved);
+  renderCatEditor();
+}
+function dragEnd() {
+  dragSrcIdx = null;
+  document.querySelectorAll('.cat-row').forEach(r => { r.classList.remove('dragging'); r.classList.remove('drag-over'); });
+}
+function deleteCategory(idx) { kiwiSections.splice(idx, 1); renderCatEditor(); }
+function saveCategories() {
+  document.querySelectorAll('.cat-name-input').forEach(input => {
+    const idx = parseInt(input.dataset.idx);
+    if (kiwiSections[idx]) kiwiSections[idx].label = input.value;
+  });
+  closePanel(); renderList(); scheduleSave();
+}
+
+// ── SECTION PICKER ──
+let modalItemKey = null;
+function openSectionPicker(itemKey) {
+  modalItemKey = itemKey;
+  document.getElementById('modalItemName').textContent = decodeURIComponent(itemKey);
+  document.getElementById('sectionOptions').innerHTML = kiwiSections.map((sec, i) =>
+    `<button class="section-option" onclick="assignSection('${sec.id}')">${i} · ${sec.label}</button>`
+  ).join('');
+  document.getElementById('sectionModal').classList.add('open');
+}
+function closeModal() { document.getElementById('sectionModal').classList.remove('open'); modalItemKey = null; }
+function assignSection(sectionId) {
+  if (!modalItemKey) return;
+  const key = decodeURIComponent(modalItemKey);
+  if (!storeData[key]) storeData[key] = { stores: ['kiwi'] };
+  storeData[key].kiwiSection = sectionId;
+  closeModal(); renderList(); scheduleSave();
+}
+
+// ── INIT ──
+// Auto-rejoin last room
+const lastRoom = localStorage.getItem('lastRoomCode');
+if (lastRoom) {
+  document.getElementById('roomCodeInput').value = lastRoom;
+  joinRoom();
+}
+</script>
+</body>
+</html>
