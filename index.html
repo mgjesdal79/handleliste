@@ -589,6 +589,7 @@ function switchTab(tab) {
 function addItems() {
   const textarea = document.getElementById('addInput');
   const raw = textarea.value.trim();
+  alert('Debug: "' + raw + '" (' + raw.length + ' tegn)');
   if (!raw) { closePanel(); return; }
   const existing = new Set(listItems.map(i => i.text.toLowerCase().trim()));
   const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
