@@ -586,43 +586,16 @@ function switchTab(tab) {
 }
 
 // ── LIST PARSING ──
-function parseLines(raw) {
-  const lines = raw.split('\n').map(l => l.trim()).filter(l => l);
-  const result = [];
-  for (const line of lines) {
-    // Silently skip lines that look like OurGroceries category headers
-    const wordCount = line.split(' ').length;
-    const looksLikeHeader = wordCount <= 3 && /^[A-ZÆØÅ]/.test(line) && !/[,\d]/.test(line) && !line.includes(' og ');
-    if (!looksLikeHeader) result.push({ text: line, cat: 'Ukategorisert' });
-  }
-  return result;
-}
-
 function addItems() {
-  let raw = document.getElementById('addInput').value.trim();
+  const raw = document.getElementById('addInput').value.trim();
   if (!raw) return;
-
-  // Decode URL-encoding (OurGroceries format)
-  if (raw.includes('%')) {
-    try { raw = decodeURIComponent(raw.replace(/\+/g, ' ')); } catch(e) {}
-  }
-
-  // Remove OurGroceries header line ("ourgroceries-liste:" or "Handleliste")
-  raw = raw.replace(/^ourgroceries-liste:\s*/i, '');
-
-  // Remove bullet points (•) and leading whitespace
-  raw = raw.split('\n')
-    .map(l => l.replace(/^\s*[•\-]\s*/, '').trim())
-    .filter(l => l)
-    .join('\n');
-
-  const newItems = parseLines(raw);
   const existing = new Set(listItems.map(i => i.text.toLowerCase().trim()));
-  for (const item of newItems) {
-    if (!existing.has(item.text.toLowerCase().trim())) {
-      listItems.push(item); existing.add(item.text.toLowerCase().trim());
+  raw.split('\n').map(l => l.trim()).filter(l => l).forEach(line => {
+    if (!existing.has(line.toLowerCase())) {
+      listItems.push({ text: line, cat: 'Ukategorisert' });
+      existing.add(line.toLowerCase());
     }
-  }
+  });
   document.getElementById('addInput').value = '';
   closePanel();
   renderList();
