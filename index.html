@@ -438,7 +438,7 @@ async function createRoom() {
 
 async function enterRoom(code) {
   currentRoomCode = code;
-  localStorage.setItem('lastRoomCode', code);
+  saveRoomCode(code);
   const rows = await sbFetch(`list_items?room_code=eq.${code}&select=*`);
   if (rows && rows[0]) loadFromRow(rows[0]);
   showApp();
@@ -457,7 +457,7 @@ async function joinRoom() {
       return;
     }
     currentRoomCode = code;
-    localStorage.setItem('lastRoomCode', code);
+    saveRoomCode(code);
     loadFromRow(rows[0]);
     showApp();
     startPolling();
@@ -491,7 +491,7 @@ function showApp() {
 function leaveRoom() {
   clearInterval(pollInterval);
   currentRoomCode = null;
-  localStorage.removeItem('lastRoomCode');
+  clearRoomCode();
   listItems = []; storeData = {}; checkedItems = {};
   document.getElementById('mainApp').classList.add('hidden');
   document.getElementById('roomScreen').classList.remove('hidden');
@@ -589,7 +589,6 @@ function switchTab(tab) {
 function addItems() {
   const textarea = document.getElementById('addInput');
   const raw = textarea.value.trim();
-  alert('Debug: "' + raw + '" (' + raw.length + ' tegn)');
   if (!raw) { closePanel(); return; }
   const existing = new Set(listItems.map(i => i.text.toLowerCase().trim()));
   const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
@@ -830,9 +829,27 @@ function assignSection(sectionId) {
   closeModal(); renderList(); scheduleSave();
 }
 
-// ── INIT ──
-// Auto-rejoin last room
-const lastRoom = localStorage.getItem('lastRoomCode');
+function saveRoomCode(code) {
+  try { localStorage.setItem('lastRoomCode', code); } catch(e) {}
+  try { sessionStorage.setItem('lastRoomCode', code); } catch(e) {}
+  window.location.hash = code;
+}
+
+function getSavedRoomCode() {
+  // Check URL hash first (works in PWA)
+  const hash = window.location.hash.replace('#', '').trim().toUpperCase();
+  if (hash && hash.length === 5) return hash;
+  try { return sessionStorage.getItem('lastRoomCode'); } catch(e) {}
+  try { return localStorage.getItem('lastRoomCode'); } catch(e) {}
+  return null;
+}
+
+function clearRoomCode() {
+  try { localStorage.removeItem('lastRoomCode'); } catch(e) {}
+  try { sessionStorage.removeItem('lastRoomCode'); } catch(e) {}
+  window.location.hash = '';
+}
+const lastRoom = getSavedRoomCode();
 if (lastRoom) {
   document.getElementById('roomCodeInput').value = lastRoom;
   joinRoom();
