@@ -246,9 +246,6 @@
   <p>Skriv inn rom-koden din for å koble til den delte handlelisten.</p>
   <input class="room-input" id="roomCodeInput" maxlength="6" placeholder="KODE" autocomplete="off" autocapitalize="characters" />
   <button class="room-btn" onclick="joinRoom()">Koble til</button>
-  <div class="room-divider">eller</div>
-  <button class="room-btn secondary" onclick="createRoom()">Lag nytt rom</button>
-  <div class="room-code-display" id="newRoomDisplay"></div>
 </div>
 
 <!-- MAIN APP -->
@@ -291,12 +288,16 @@
           <span class="settings-value" id="displayRoomCode">–</span>
         </div>
         <div class="settings-row">
-          <span class="settings-label">Del med konen</span>
+          <span class="settings-label">Del koden</span>
           <button class="settings-link" onclick="copyRoomCode()">Kopier rom-kode</button>
         </div>
         <div class="settings-row">
           <span class="settings-label">Bytt rom</span>
           <button class="settings-link" onclick="leaveRoom()">Logg ut av rom</button>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Lag nytt rom</span>
+          <button class="settings-link" onclick="createRoom()">Opprett</button>
         </div>
       </div>
       <div class="panel-section" id="tab-categories">
@@ -415,6 +416,7 @@ function generateCode() {
 }
 
 async function createRoom() {
+  if (!confirm('Lag et helt nytt rom? Du mister tilgang til det nåværende rommet.')) return;
   const code = generateCode();
   setSyncStatus('syncing');
   try {
@@ -423,22 +425,10 @@ async function createRoom() {
       data: JSON.stringify({ items: [], storeData: {}, checkedItems: {} }),
       categories: JSON.stringify(defaultSections)
     });
-    // Show code screen before entering app
-    document.getElementById('newRoomDisplay').innerHTML = `
-      <div style="margin-top:24px;padding:20px;background:var(--surface);border-radius:var(--radius);border:2px solid var(--accent-kiwi);text-align:center;">
-        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;font-family:'Syne',sans-serif;letter-spacing:0.08em;text-transform:uppercase;">Din rom-kode</div>
-        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:2.2rem;letter-spacing:0.2em;color:var(--text);margin-bottom:12px;">${code}</div>
-        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;"></div>
-        <button onclick="navigator.clipboard.writeText('${code}').catch(()=>{}); this.textContent='✓ Kopiert!'; setTimeout(()=>this.textContent='Kopier kode',2000)" 
-          style="padding:8px 20px;border-radius:100px;border:1px solid var(--border);background:var(--bg);font-family:'Syne',sans-serif;font-weight:600;font-size:0.82rem;cursor:pointer;margin-right:8px;">
-          Kopier kode
-        </button>
-        <button onclick="enterRoom('${code}')"
-          style="padding:8px 20px;border-radius:100px;border:none;background:var(--text);color:white;font-family:'Syne',sans-serif;font-weight:600;font-size:0.82rem;cursor:pointer;">
-          Fortsett →
-        </button>
-      </div>`;
-    document.getElementById('roomCodeInput').value = code;
+    await enterRoom(code);
+    document.getElementById('displayRoomCode').textContent = code;
+    navigator.clipboard.writeText(code).catch(() => {});
+    alert('Nytt rom opprettet! Kode: ' + code + '\n(Kopiert til utklippstavlen)');
   } catch(e) {
     console.error('createRoom error:', e);
     setSyncStatus('error');
