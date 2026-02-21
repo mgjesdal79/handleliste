@@ -347,20 +347,26 @@
 <script>
 // ── SUPABASE CONFIG ──
 const SUPABASE_URL = 'https://vkhktataxypuobrzslbi.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_iUwAfMrw1Ckrxbf1ZDLINA_xKUGyscg';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZraGt0YXRheHlwdW9icnpzbGJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MjM2MDIsImV4cCI6MjA4NzE5OTYwMn0.Hb-MT9Xss4s4lCTtpKJujs0eZsy-TMpw-xvSBF9j78E';
 
 async function sbFetch(path, method = 'GET', body = null) {
+  // Try legacy anon key header format first, with publishable key
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
     method,
     headers: {
       'apikey': SUPABASE_KEY,
       'Authorization': 'Bearer ' + SUPABASE_KEY,
       'Content-Type': 'application/json',
-      'Prefer': method === 'POST' ? 'resolution=merge-duplicates' : ''
+      'X-Client-Info': 'handleliste/1.0',
+      'Prefer': method === 'PATCH' ? 'return=minimal' : method === 'POST' ? 'return=minimal,resolution=merge-duplicates' : ''
     },
     body: body ? JSON.stringify(body) : null
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('Supabase error:', res.status, err);
+    throw new Error(err);
+  }
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
@@ -403,7 +409,7 @@ async function createRoom() {
   const code = generateCode();
   setSyncStatus('syncing');
   try {
-    await sbFetch('list_items', 'POST', {
+    await sbFetch('list_items?on_conflict=room_code', 'POST', {
       room_code: code,
       data: JSON.stringify({ items: [], storeData: {}, checkedItems: {} }),
       categories: JSON.stringify(defaultSections)
@@ -412,6 +418,7 @@ async function createRoom() {
     document.getElementById('roomCodeInput').value = code;
     await joinRoom();
   } catch(e) {
+    console.error('createRoom error:', e);
     setSyncStatus('error');
     alert('Kunne ikke opprette rom. Sjekk tilkoblingen.');
   }
