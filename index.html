@@ -264,7 +264,7 @@
     <div class="slide-panel-inner">
       <textarea id="addInput" placeholder="Lim inn fra OurGroceries, eller skriv én vare per linje..."></textarea>
       <div class="panel-actions">
-        <button class="action-btn primary" onclick="addItems()">Last inn</button>
+        <button class="action-btn primary" onclick="addItems()">Legg til</button>
         <button class="action-btn secondary" onclick="closePanel()">Avbryt</button>
       </div>
     </div>
@@ -295,7 +295,10 @@
       </div>
       <div class="panel-section" id="tab-categories">
         <div class="cat-list" id="catList"></div>
-        <button class="cat-save-btn" onclick="saveCategories()">Lagre kategorier</button>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="action-btn secondary" onclick="addNewCategory()" style="flex:1">+ Ny kategori</button>
+          <button class="cat-save-btn" onclick="saveCategories()" style="flex:1">Lagre</button>
+        </div>
       </div>
       <div class="panel-section" id="tab-export">
         <textarea class="export-textarea" id="exportText" readonly placeholder="Trykk Eksporter..."></textarea>
@@ -414,14 +417,36 @@ async function createRoom() {
       data: JSON.stringify({ items: [], storeData: {}, checkedItems: {} }),
       categories: JSON.stringify(defaultSections)
     });
-    document.getElementById('newRoomDisplay').innerHTML = `Ny rom-kode: <span>${code}</span> – del denne med konen din!`;
+    // Show code screen before entering app
+    document.getElementById('newRoomDisplay').innerHTML = `
+      <div style="margin-top:24px;padding:20px;background:var(--surface);border-radius:var(--radius);border:2px solid var(--accent-kiwi);text-align:center;">
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;font-family:'Syne',sans-serif;letter-spacing:0.08em;text-transform:uppercase;">Din rom-kode</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:2.2rem;letter-spacing:0.2em;color:var(--text);margin-bottom:12px;">${code}</div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;"></div>
+        <button onclick="navigator.clipboard.writeText('${code}').catch(()=>{}); this.textContent='✓ Kopiert!'; setTimeout(()=>this.textContent='Kopier kode',2000)" 
+          style="padding:8px 20px;border-radius:100px;border:1px solid var(--border);background:var(--bg);font-family:'Syne',sans-serif;font-weight:600;font-size:0.82rem;cursor:pointer;margin-right:8px;">
+          Kopier kode
+        </button>
+        <button onclick="enterRoom('${code}')"
+          style="padding:8px 20px;border-radius:100px;border:none;background:var(--text);color:white;font-family:'Syne',sans-serif;font-weight:600;font-size:0.82rem;cursor:pointer;">
+          Fortsett →
+        </button>
+      </div>`;
     document.getElementById('roomCodeInput').value = code;
-    await joinRoom();
   } catch(e) {
     console.error('createRoom error:', e);
     setSyncStatus('error');
     alert('Kunne ikke opprette rom. Sjekk tilkoblingen.');
   }
+}
+
+async function enterRoom(code) {
+  currentRoomCode = code;
+  localStorage.setItem('lastRoomCode', code);
+  const rows = await sbFetch(`list_items?room_code=eq.${code}&select=*`);
+  if (rows && rows[0]) loadFromRow(rows[0]);
+  showApp();
+  startPolling();
 }
 
 async function joinRoom() {
@@ -496,10 +521,13 @@ async function saveToCloud() {
   if (!currentRoomCode) return;
   setSyncStatus('syncing');
   try {
+    const dataStr = JSON.stringify({ items: listItems, storeData, checkedItems });
+    const catStr = JSON.stringify(kiwiSections);
     await sbFetch(`list_items?room_code=eq.${currentRoomCode}`, 'PATCH', {
-      data: JSON.stringify({ items: listItems, storeData, checkedItems }),
-      categories: JSON.stringify(kiwiSections)
+      data: dataStr,
+      categories: catStr
     });
+    lastDataHash = dataStr + catStr;
     setSyncStatus('synced');
   } catch(e) {
     setSyncStatus('error');
@@ -556,11 +584,12 @@ function switchTab(tab) {
 // ── LIST PARSING ──
 function parseLines(raw) {
   const lines = raw.split('\n').map(l => l.trim()).filter(l => l);
-  const result = []; let cat = 'Ukategorisert';
+  const result = [];
   for (const line of lines) {
-    const isHeader = line.split(' ').length <= 5 && /^[A-ZÆØÅ]/.test(line) && !/[,\d]/.test(line);
-    if (isHeader) cat = line;
-    else result.push({ text: line, cat });
+    // Silently skip lines that look like OurGroceries category headers
+    const wordCount = line.split(' ').length;
+    const looksLikeHeader = wordCount <= 3 && /^[A-ZÆØÅ]/.test(line) && !/[,\d]/.test(line) && !line.includes(' og ');
+    if (!looksLikeHeader) result.push({ text: line, cat: 'Ukategorisert' });
   }
   return result;
 }
@@ -578,7 +607,10 @@ function addItems() {
   document.getElementById('addInput').value = '';
   closePanel();
   renderList();
-  scheduleSave();
+  // Save immediately and update hash so polling doesn't overwrite
+  saveToCloud().then(() => {
+    lastDataHash = JSON.stringify({ items: listItems, storeData, checkedItems }) + JSON.stringify(kiwiSections);
+  });
 }
 
 function toemVogna() {
@@ -750,6 +782,15 @@ function renderCatEditor() {
         onchange="kiwiSections[${i}].label=this.value">
       <button class="cat-delete-btn" onclick="deleteCategory(${i})">✕</button>
     </div>`).join('');
+}
+
+function addNewCategory() {
+  kiwiSections.push({ id: 'k_' + Date.now(), label: 'Ny kategori', keywords: [] });
+  renderCatEditor();
+  // Focus the new input
+  const inputs = document.querySelectorAll('.cat-name-input');
+  const last = inputs[inputs.length - 1];
+  if (last) { last.focus(); last.select(); }
 }
 function dragStart(e, idx) { dragSrcIdx = idx; e.dataTransfer.effectAllowed = 'move'; }
 function dragOver(e, idx) {
