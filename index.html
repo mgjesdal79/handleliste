@@ -591,8 +591,23 @@ function parseLines(raw) {
 }
 
 function addItems() {
-  const raw = document.getElementById('addInput').value.trim();
+  let raw = document.getElementById('addInput').value.trim();
   if (!raw) return;
+
+  // Decode URL-encoding (OurGroceries format)
+  if (raw.includes('%')) {
+    try { raw = decodeURIComponent(raw.replace(/\+/g, ' ')); } catch(e) {}
+  }
+
+  // Remove OurGroceries header line ("ourgroceries-liste:" or "Handleliste")
+  raw = raw.replace(/^ourgroceries-liste:\s*/i, '');
+
+  // Remove bullet points (•) and leading whitespace
+  raw = raw.split('\n')
+    .map(l => l.replace(/^\s*[•\-]\s*/, '').trim())
+    .filter(l => l)
+    .join('\n');
+
   const newItems = parseLines(raw);
   const existing = new Set(listItems.map(i => i.text.toLowerCase().trim()));
   for (const item of newItems) {
