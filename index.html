@@ -587,18 +587,21 @@ function switchTab(tab) {
 
 // ── LIST PARSING ──
 function addItems() {
-  const raw = document.getElementById('addInput').value.trim();
-  if (!raw) return;
+  const textarea = document.getElementById('addInput');
+  const raw = textarea.value.trim();
+  if (!raw) { closePanel(); return; }
   const existing = new Set(listItems.map(i => i.text.toLowerCase().trim()));
-  raw.split('\n').map(l => l.trim()).filter(l => l).forEach(line => {
-    if (!existing.has(line.toLowerCase())) {
+  const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  lines.forEach(line => {
+    const key = line.toLowerCase();
+    if (!existing.has(key)) {
       listItems.push({ text: line, cat: 'Ukategorisert' });
-      existing.add(line.toLowerCase());
+      existing.add(key);
     }
   });
-  document.getElementById('addInput').value = '';
-  closePanel();
+  textarea.value = '';
   renderList();
+  closePanel();
   scheduleSave();
 }
 
