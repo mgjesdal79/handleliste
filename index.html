@@ -513,8 +513,11 @@ function setSyncStatus(status) {
   dot.className = 'sync-dot ' + status;
 }
 
+let isSaving = false;
+
 async function saveToCloud() {
   if (!currentRoomCode) return;
+  isSaving = true;
   setSyncStatus('syncing');
   try {
     const dataStr = JSON.stringify({ items: listItems, storeData, checkedItems });
@@ -527,17 +530,22 @@ async function saveToCloud() {
     setSyncStatus('synced');
   } catch(e) {
     setSyncStatus('error');
+  } finally {
+    isSaving = false;
   }
 }
 
 function scheduleSave() {
   clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(saveToCloud, 800);
+  saveTimeout = setTimeout(async () => {
+    await saveToCloud();
+    saveTimeout = null;
+  }, 500);
 }
 
 let lastDataHash = null;
 async function pollCloud() {
-  if (!currentRoomCode) return;
+  if (!currentRoomCode || isSaving || saveTimeout) return;
   try {
     const rows = await sbFetch(`list_items?room_code=eq.${currentRoomCode}&select=data,categories`);
     if (!rows || !rows[0]) return;
@@ -618,10 +626,7 @@ function addItems() {
   document.getElementById('addInput').value = '';
   closePanel();
   renderList();
-  // Save immediately and update hash so polling doesn't overwrite
-  saveToCloud().then(() => {
-    lastDataHash = JSON.stringify({ items: listItems, storeData, checkedItems }) + JSON.stringify(kiwiSections);
-  });
+  scheduleSave();
 }
 
 function toemVogna() {
