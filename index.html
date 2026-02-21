@@ -358,7 +358,7 @@ async function sbFetch(path, method = 'GET', body = null) {
       'Authorization': 'Bearer ' + SUPABASE_KEY,
       'Content-Type': 'application/json',
       'X-Client-Info': 'handleliste/1.0',
-      'Prefer': method === 'PATCH' ? 'return=minimal' : method === 'POST' ? 'return=minimal,resolution=merge-duplicates' : ''
+      'Prefer': method === 'PATCH' ? 'return=minimal' : method === 'POST' ? 'return=representation' : ''
     },
     body: body ? JSON.stringify(body) : null
   });
@@ -409,7 +409,7 @@ async function createRoom() {
   const code = generateCode();
   setSyncStatus('syncing');
   try {
-    await sbFetch('list_items?on_conflict=room_code', 'POST', {
+    await sbFetch('list_items', 'POST', {
       room_code: code,
       data: JSON.stringify({ items: [], storeData: {}, checkedItems: {} }),
       categories: JSON.stringify(defaultSections)
