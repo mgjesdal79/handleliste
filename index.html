@@ -287,13 +287,13 @@
     <div class="slide-panel-inner">
       <div class="add-store-selector">
         <div class="add-store-group" id="addStoreGroup1">
-          <button class="add-store-btn active" data-group="dagligvare" onclick="selectAddGroup('dagligvare')">Dagligvare</button>
-          <button class="add-store-btn" data-group="andre" onclick="selectAddGroup('andre')">Andre butikker</button>
+          <button class="add-store-btn active" data-group="dagligvare">Dagligvare</button>
+          <button class="add-store-btn" data-group="andre">Andre butikker</button>
         </div>
         <div class="add-store-group" id="addStoreGroup2">
-          <button class="add-store-btn active" data-addstore="kiwi" onclick="selectAddStore('kiwi')">Kiwi</button>
-          <button class="add-store-btn" data-addstore="rema" onclick="selectAddStore('rema')">Rema</button>
-          <button class="add-store-btn" data-addstore="meny" onclick="selectAddStore('meny')">Meny</button>
+          <button class="add-store-btn active" data-addstore="kiwi">Kiwi</button>
+          <button class="add-store-btn" data-addstore="rema">Rema</button>
+          <button class="add-store-btn" data-addstore="meny">Meny</button>
         </div>
       </div>
       <textarea id="addInput" placeholder="Én vare per linje..."></textarea>
@@ -642,14 +642,14 @@ function selectAddGroup(group) {
   if (group === 'dagligvare') {
     if (!['kiwi','rema','meny'].includes(addStore)) addStore = 'kiwi';
     group2.innerHTML = `
-      <button class="add-store-btn ${addStore==='kiwi'?'active':''}" data-addstore="kiwi" onclick="selectAddStore('kiwi')">Kiwi</button>
-      <button class="add-store-btn ${addStore==='rema'?'active':''}" data-addstore="rema" onclick="selectAddStore('rema')">Rema</button>
-      <button class="add-store-btn ${addStore==='meny'?'active':''}" data-addstore="meny" onclick="selectAddStore('meny')">Meny</button>`;
+      <button class="add-store-btn ${addStore==='kiwi'?'active':''}" data-addstore="kiwi">Kiwi</button>
+      <button class="add-store-btn ${addStore==='rema'?'active':''}" data-addstore="rema">Rema</button>
+      <button class="add-store-btn ${addStore==='meny'?'active':''}" data-addstore="meny">Meny</button>`;
   } else {
     const secs = andreSections.length ? andreSections : defaultAndreSections;
     if (!secs.find(s => s.id === addStore)) addStore = secs[0].id;
     group2.innerHTML = secs.map(s =>
-      `<button class="add-store-btn ${addStore===s.id?'active':''}" data-addstore="${s.id}" onclick="selectAddStore('${s.id}')">${s.label}</button>`
+      `<button class="add-store-btn ${addStore===s.id?'active':''}" data-addstore="${s.id}">${s.label}</button>`
     ).join('');
   }
 }
@@ -986,6 +986,16 @@ function doImport() {
     closePanel(); renderList(); scheduleSave();
   } catch(e) { alert('Feil format.'); }
 }
+
+// ── ADD PANEL EVENTS (event delegation) ──
+document.getElementById('addStoreGroup1').addEventListener('click', e => {
+  const btn = e.target.closest('[data-group]');
+  if (btn) selectAddGroup(btn.dataset.group);
+});
+document.getElementById('addStoreGroup2').addEventListener('click', e => {
+  const btn = e.target.closest('[data-addstore]');
+  if (btn) selectAddStore(btn.dataset.addstore);
+});
 
 // ── INIT ──
 const savedRoom = getSavedRoomCode();
