@@ -987,14 +987,12 @@ function doImport() {
   } catch(e) { alert('Feil format.'); }
 }
 
-// ── ADD PANEL EVENTS (event delegation) ──
-document.getElementById('addStoreGroup1').addEventListener('click', e => {
-  const btn = e.target.closest('[data-group]');
-  if (btn) selectAddGroup(btn.dataset.group);
-});
-document.getElementById('addStoreGroup2').addEventListener('click', e => {
-  const btn = e.target.closest('[data-addstore]');
-  if (btn) selectAddStore(btn.dataset.addstore);
+// ── ADD PANEL EVENTS (event delegation on body) ──
+document.body.addEventListener('click', e => {
+  const groupBtn = e.target.closest('#addStoreGroup1 [data-group]');
+  if (groupBtn) { selectAddGroup(groupBtn.dataset.group); return; }
+  const storeBtn = e.target.closest('#addStoreGroup2 [data-addstore]');
+  if (storeBtn) { selectAddStore(storeBtn.dataset.addstore); return; }
 });
 
 // ── INIT ──
