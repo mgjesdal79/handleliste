@@ -656,9 +656,12 @@ function selectAddGroup(group) {
 
 function selectAddStore(store) {
   addStore = store;
-  document.querySelectorAll('#addStoreGroup2 [data-addstore]').forEach(b => b.classList.remove('active'));
-  const btn = document.querySelector(`#addStoreGroup2 [data-addstore="${store}"]`);
-  if (btn) btn.classList.add('active');
+  // Update all buttons in group2
+  const group2 = document.getElementById('addStoreGroup2');
+  if (!group2) return;
+  group2.querySelectorAll('[data-addstore]').forEach(b => {
+    b.classList.toggle('active', b.dataset.addstore === store);
+  });
 }
 
 function togglePanel(name) {
@@ -990,9 +993,9 @@ function doImport() {
 // ── ADD PANEL EVENTS (event delegation on body) ──
 document.body.addEventListener('click', e => {
   const groupBtn = e.target.closest('#addStoreGroup1 [data-group]');
-  if (groupBtn) { alert('group: ' + groupBtn.dataset.group); selectAddGroup(groupBtn.dataset.group); return; }
+  if (groupBtn) { selectAddGroup(groupBtn.dataset.group); return; }
   const storeBtn = e.target.closest('#addStoreGroup2 [data-addstore]');
-  if (storeBtn) { alert('store: ' + storeBtn.dataset.addstore); selectAddStore(storeBtn.dataset.addstore); return; }
+  if (storeBtn) { selectAddStore(storeBtn.dataset.addstore); return; }
 });
 
 // ── INIT ──
