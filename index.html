@@ -920,6 +920,8 @@ function doImport() {
 // ── INIT ──
 const savedRoom = getSavedRoomCode();
 if (savedRoom) {
+  // Skip room screen entirely, join directly
+  document.getElementById('roomScreen').classList.add('hidden');
   document.getElementById('roomCodeInput').value = savedRoom;
   joinRoom();
 }
