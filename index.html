@@ -647,9 +647,9 @@ function selectAddGroup(group) {
       <button class="add-store-btn ${addStore==='meny'?'active':''}" data-addstore="meny">Meny</button>`;
   } else {
     const secs = andreSections.length ? andreSections : defaultAndreSections;
-    if (!secs.find(s => s.id === addStore)) addStore = secs[0].id;
-    group2.innerHTML = secs.map(s =>
-      `<button class="add-store-btn ${addStore===s.id?'active':''}" data-addstore="${s.id}">${s.label}</button>`
+    addStore = secs[0].id; // Always reset to first andre section
+    group2.innerHTML = secs.map((s, i) =>
+      `<button class="add-store-btn ${i===0?'active':''}" data-addstore="${s.id}">${s.label}</button>`
     ).join('');
   }
 }
