@@ -638,26 +638,26 @@ function selectAddGroup(group) {
   addGroup = group;
   document.querySelectorAll('[data-group]').forEach(b => b.classList.remove('active'));
   document.querySelector(`[data-group="${group}"]`).classList.add('active');
-  // Update second row
   const group2 = document.getElementById('addStoreGroup2');
   if (group === 'dagligvare') {
+    if (!['kiwi','rema','meny'].includes(addStore)) addStore = 'kiwi';
     group2.innerHTML = `
       <button class="add-store-btn ${addStore==='kiwi'?'active':''}" data-addstore="kiwi" onclick="selectAddStore('kiwi')">Kiwi</button>
       <button class="add-store-btn ${addStore==='rema'?'active':''}" data-addstore="rema" onclick="selectAddStore('rema')">Rema</button>
       <button class="add-store-btn ${addStore==='meny'?'active':''}" data-addstore="meny" onclick="selectAddStore('meny')">Meny</button>`;
-    if (!['kiwi','rema','meny'].includes(addStore)) { addStore = 'kiwi'; selectAddStore('kiwi'); }
   } else {
-    group2.innerHTML = andreSections.map(s =>
+    const secs = andreSections.length ? andreSections : defaultAndreSections;
+    if (!secs.find(s => s.id === addStore)) addStore = secs[0].id;
+    group2.innerHTML = secs.map(s =>
       `<button class="add-store-btn ${addStore===s.id?'active':''}" data-addstore="${s.id}" onclick="selectAddStore('${s.id}')">${s.label}</button>`
     ).join('');
-    if (!andreSections.find(s => s.id === addStore)) { addStore = andreSections[0]?.id || 'a0'; selectAddStore(addStore); }
   }
 }
 
 function selectAddStore(store) {
   addStore = store;
-  document.querySelectorAll('[data-addstore]').forEach(b => b.classList.remove('active'));
-  const btn = document.querySelector(`[data-addstore="${store}"]`);
+  document.querySelectorAll('#addStoreGroup2 [data-addstore]').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`#addStoreGroup2 [data-addstore="${store}"]`);
   if (btn) btn.classList.add('active');
 }
 
