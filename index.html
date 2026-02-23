@@ -636,8 +636,8 @@ let addStore = 'kiwi';       // 'kiwi','rema','meny' or andreSection id
 
 function selectAddGroup(group) {
   addGroup = group;
-  document.querySelectorAll('[data-group]').forEach(b => b.classList.remove('active'));
-  document.querySelector(`[data-group="${group}"]`).classList.add('active');
+  document.querySelectorAll('#addStoreGroup1 [data-group]').forEach(b => b.classList.remove('active'));
+  document.querySelector(`#addStoreGroup1 [data-group="${group}"]`).classList.add('active');
   const group2 = document.getElementById('addStoreGroup2');
   if (group === 'dagligvare') {
     if (!['kiwi','rema','meny'].includes(addStore)) addStore = 'kiwi';
