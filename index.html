@@ -11,15 +11,15 @@
 <link rel="manifest" href="manifest.json">
 <title>Handleliste</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maple-mono@1.0.0/index.css">
   :root {
-    --bg: #f5f2ec; --surface: #ffffff; --border: #e0d9ce;
-    --text: #1a1814; --muted: #8a8070;
-    --kiwi: #2d8a3e; --rema: #003087; --meny: #cc1b1b; --andre: #7c5cbf;
-    --hi-kiwi: #d6eedd; --hi-kiwi-b: #7ec99a;
-    --hi-rema: #d6e4f5; --hi-rema-b: #7aaedd;
-    --hi-meny: #fadadd; --hi-meny-b: #e08080;
-    --hi-andre: #ede8f7; --hi-andre-b: #b09ed9;
+    --bg: #f0ece4; --surface: #ffffff; --border: #d4cabf;
+    --text: #0f0e0b; --muted: #6b5f52;
+    --kiwi: #1e7a2e; --rema: #002070; --meny: #b51515; --andre: #6040b0;
+    --hi-kiwi: #c8e8d0; --hi-kiwi-b: #5db87a;
+    --hi-rema: #c8d8f0; --hi-rema-b: #5a9ad0;
+    --hi-meny: #f5c8cc; --hi-meny-b: #d06060;
+    --hi-andre: #e4daf5; --hi-andre-b: #9070d0;
     --radius: 10px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -30,18 +30,18 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     min-height: 100vh; padding: 32px 24px; max-width: 400px; margin: 0 auto;
   }
-  .room-screen h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2rem; letter-spacing: -0.03em; margin-bottom: 8px; }
+  .room-screen h1 { font-family: 'Maple Mono', monospace; font-weight: 800; font-size: 2rem; letter-spacing: -0.03em; margin-bottom: 8px; }
   .room-screen p { color: var(--muted); font-size: 0.9rem; margin-bottom: 32px; text-align: center; line-height: 1.6; }
   .room-input {
     width: 100%; padding: 14px; border: 2px solid var(--border); border-radius: var(--radius);
-    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.4rem;
+    font-family: 'Maple Mono', monospace; font-weight: 700; font-size: 1.4rem;
     text-align: center; letter-spacing: 0.2em; text-transform: uppercase;
     background: var(--surface); color: var(--text); outline: none; margin-bottom: 12px;
   }
   .room-input:focus { border-color: var(--kiwi); }
   .room-btn {
     width: 100%; padding: 14px; border-radius: var(--radius); border: none;
-    background: var(--text); color: white; font-family: 'Syne', sans-serif;
+    background: var(--text); color: white; font-family: 'Maple Mono', monospace;
     font-weight: 700; font-size: 1rem; cursor: pointer; margin-bottom: 10px; transition: opacity 0.15s;
   }
   .room-btn:hover { opacity: 0.85; }
@@ -52,14 +52,14 @@
     border-bottom: 1px solid var(--border); padding: 10px 16px;
     max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 8px;
   }
-  .topbar h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.03em; flex: 1; }
+  .topbar h1 { font-family: 'Maple Mono', monospace; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.03em; flex: 1; }
 
   /* Store tabs – two groups */
   .store-group { display: flex; gap: 4px; }
   .store-group + .store-group { border-left: 1px solid var(--border); padding-left: 8px; }
   .store-btn {
     padding: 5px 10px; border-radius: 100px; border: 2px solid var(--border);
-    background: transparent; font-family: 'Syne', sans-serif; font-weight: 600;
+    background: transparent; font-family: 'Maple Mono', monospace; font-weight: 600;
     font-size: 0.72rem; cursor: pointer; color: var(--muted); transition: all 0.18s; white-space: nowrap;
   }
   .store-btn.active[data-store="kiwi"]  { background: var(--kiwi);  border-color: var(--kiwi);  color: white; }
@@ -87,7 +87,7 @@
   .panel-tabs { display: flex; gap: 5px; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 12px; flex-wrap: wrap; }
   .panel-tab {
     padding: 4px 12px; border-radius: 100px; border: 1px solid var(--border);
-    background: transparent; font-family: 'Syne', sans-serif; font-weight: 600;
+    background: transparent; font-family: 'Maple Mono', monospace; font-weight: 600;
     font-size: 0.75rem; cursor: pointer; color: var(--muted);
   }
   .panel-tab.active { background: var(--text); color: white; border-color: var(--text); }
@@ -104,7 +104,7 @@
   .panel-actions { display: flex; gap: 8px; margin-top: 10px; }
   .action-btn {
     flex: 1; padding: 10px; border-radius: 8px; border: none;
-    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: opacity 0.15s;
+    font-family: 'Maple Mono', monospace; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: opacity 0.15s;
   }
   .action-btn.primary { background: var(--text); color: white; }
   .action-btn.secondary { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
@@ -117,7 +117,7 @@
   .empty-state p { font-size: 0.9rem; line-height: 1.6; }
 
   .section-header {
-    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.72rem;
+    font-family: 'Maple Mono', monospace; font-weight: 700; font-size: 0.72rem;
     letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
     padding: 10px 0 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px; margin-top: 18px;
   }
@@ -161,7 +161,7 @@
     border: none; border-left: 1px solid var(--border);
     background: transparent; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    font-size: 0.6rem; font-family: 'Syne', sans-serif; font-weight: 700;
+    font-size: 0.6rem; font-family: 'Maple Mono', monospace; font-weight: 700;
     color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase;
     transition: background 0.15s; padding: 0;
   }
@@ -188,7 +188,7 @@
   }
   .bottom-btn {
     flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
-    background: transparent; font-family: 'Syne', sans-serif; font-weight: 600;
+    background: transparent; font-family: 'Maple Mono', monospace; font-weight: 600;
     font-size: 0.8rem; cursor: pointer; color: var(--muted); transition: all 0.15s;
   }
   .bottom-btn:hover { background: var(--bg); }
@@ -199,7 +199,7 @@
   .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: flex-end; justify-content: center; }
   .modal-backdrop.open { display: flex; }
   .modal { background: var(--surface); border-radius: 16px 16px 0 0; padding: 20px 16px 40px; width: 100%; max-width: 640px; max-height: 80vh; overflow-y: auto; }
-  .modal-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+  .modal-title { font-family: 'Maple Mono', monospace; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
   .modal-subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
   .modal-option {
     display: block; width: 100%; text-align: left; padding: 12px 14px; margin-bottom: 6px;
@@ -212,7 +212,7 @@
   .modal-option[data-store="rema"].active-store  { background: var(--hi-rema);  border-color: var(--rema); }
   .modal-option[data-store="meny"].active-store  { background: var(--hi-meny);  border-color: var(--meny); }
   .modal-option[data-store="andre"].active-store { background: var(--hi-andre); border-color: var(--andre); }
-  .modal-cancel { display: block; width: 100%; margin-top: 8px; padding: 12px; border-radius: 8px; border: none; background: var(--bg); font-family: 'Syne', sans-serif; font-weight: 600; font-size: 0.85rem; cursor: pointer; color: var(--muted); }
+  .modal-cancel { display: block; width: 100%; margin-top: 8px; padding: 12px; border-radius: 8px; border: none; background: var(--bg); font-family: 'Maple Mono', monospace; font-weight: 600; font-size: 0.85rem; cursor: pointer; color: var(--muted); }
 
   /* Section picker in modal */
   .section-option { display: block; width: 100%; text-align: left; padding: 11px 14px; margin-bottom: 4px; border-radius: 8px; border: 1px solid var(--border); background: transparent; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; transition: all 0.15s; color: var(--text); }
@@ -221,7 +221,7 @@
   /* ── SETTINGS ── */
   .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--border); }
   .settings-row:last-child { border-bottom: none; }
-  .settings-label { color: var(--muted); font-size: 0.75rem; font-family: 'Syne', sans-serif; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  .settings-label { color: var(--muted); font-size: 0.75rem; font-family: 'Maple Mono', monospace; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
   .settings-value { font-weight: 500; font-size: 0.88rem; }
   .settings-link { color: var(--rema); font-size: 0.82rem; cursor: pointer; text-decoration: underline; background: none; border: none; font-family: 'DM Sans', sans-serif; }
 
@@ -235,14 +235,14 @@
   .cat-delete-btn { background: none; border: none; cursor: pointer; color: var(--border); font-size: 1rem; padding: 0 2px; flex-shrink: 0; transition: color 0.15s; }
   .cat-delete-btn:hover { color: var(--meny); }
   .cat-save-row { display: flex; gap: 8px; margin-top: 10px; }
-  .cat-add-btn { flex: 1; padding: 9px; border-radius: 8px; border: 1px dashed var(--border); background: transparent; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 0.82rem; cursor: pointer; color: var(--muted); }
-  .cat-save-btn { flex: 1; padding: 9px; border-radius: 8px; border: none; background: var(--kiwi); color: white; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.82rem; cursor: pointer; }
+  .cat-add-btn { flex: 1; padding: 9px; border-radius: 8px; border: 1px dashed var(--border); background: transparent; font-family: 'Maple Mono', monospace; font-weight: 600; font-size: 0.82rem; cursor: pointer; color: var(--muted); }
+  .cat-save-btn { flex: 1; padding: 9px; border-radius: 8px; border: none; background: var(--kiwi); color: white; font-family: 'Maple Mono', monospace; font-weight: 700; font-size: 0.82rem; cursor: pointer; }
 
   .add-store-selector { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
   .add-store-group { display: flex; gap: 6px; flex-wrap: wrap; }
   .add-store-btn {
     padding: 7px 14px; border-radius: 100px; border: 2px solid var(--border);
-    background: transparent; font-family: 'Syne', sans-serif; font-weight: 600;
+    background: transparent; font-family: 'Maple Mono', monospace; font-weight: 600;
     font-size: 0.8rem; cursor: pointer; color: var(--muted); transition: all 0.15s;
   }
   .add-store-btn.active[data-group="dagligvare"],
@@ -633,10 +633,10 @@ function renderAddPanel() {
     : secs.map(s => ({id:s.id,label:s.label,color:'#7c5cbf'}));
   el.innerHTML = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-      ${['dagligvare','andre'].map(g => `<button onclick="selectAddGroup('${g}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addGroup===g?'#1a1814':'#e0d9ce'};background:${addGroup===g?'#1a1814':'transparent'};color:${addGroup===g?'white':'#8a8070'};font-family:Syne,sans-serif;font-weight:600;font-size:0.8rem;cursor:pointer;">${g==='dagligvare'?'Dagligvare':'Andre butikker'}</button>`).join('')}
+      ${['dagligvare','andre'].map(g => `<button onclick="selectAddGroup('${g}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addGroup===g?'#1a1814':'#e0d9ce'};background:${addGroup===g?'#1a1814':'transparent'};color:${addGroup===g?'white':'#8a8070'};font-family:'Maple Mono',monospace;font-weight:600;font-size:0.8rem;cursor:pointer;">${g==='dagligvare'?'Dagligvare':'Andre butikker'}</button>`).join('')}
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-      ${stores.map(s => `<button onclick="selectAddStore('${s.id}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addStore===s.id?s.color:'#e0d9ce'};background:${addStore===s.id?s.color:'transparent'};color:${addStore===s.id?'white':'#8a8070'};font-family:Syne,sans-serif;font-weight:600;font-size:0.8rem;cursor:pointer;">${s.label}</button>`).join('')}
+      ${stores.map(s => `<button onclick="selectAddStore('${s.id}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addStore===s.id?s.color:'#e0d9ce'};background:${addStore===s.id?s.color:'transparent'};color:${addStore===s.id?'white':'#8a8070'};font-family:'Maple Mono',monospace;font-weight:600;font-size:0.8rem;cursor:pointer;">${s.label}</button>`).join('')}
     </div>`;
 }
 
