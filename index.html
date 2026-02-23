@@ -653,8 +653,15 @@ function guessSection(text, sections) {
 function getItemStore(itemText) {
   const key = itemText.toLowerCase().trim();
   const stored = storeData[key];
-  if (stored && stored.store) return stored.store;
-  return 'kiwi'; // default
+  if (!stored) return 'kiwi';
+  // New format
+  if (stored.store) return stored.store;
+  // Old format: { stores: ['kiwi'] }
+  if (stored.stores && stored.stores.length) {
+    if (stored.stores.includes('andre')) return 'andre';
+    return stored.stores[0];
+  }
+  return 'kiwi';
 }
 
 function getItemStores(itemText) {
