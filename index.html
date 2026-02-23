@@ -990,9 +990,9 @@ function doImport() {
 // ── ADD PANEL EVENTS (event delegation on body) ──
 document.body.addEventListener('click', e => {
   const groupBtn = e.target.closest('#addStoreGroup1 [data-group]');
-  if (groupBtn) { selectAddGroup(groupBtn.dataset.group); return; }
+  if (groupBtn) { alert('group: ' + groupBtn.dataset.group); selectAddGroup(groupBtn.dataset.group); return; }
   const storeBtn = e.target.closest('#addStoreGroup2 [data-addstore]');
-  if (storeBtn) { selectAddStore(storeBtn.dataset.addstore); return; }
+  if (storeBtn) { alert('store: ' + storeBtn.dataset.addstore); selectAddStore(storeBtn.dataset.addstore); return; }
 });
 
 // ── INIT ──
