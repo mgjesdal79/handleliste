@@ -606,13 +606,6 @@ function startPolling() { clearInterval(pollInterval); pollInterval = setInterva
 
 // ── PANEL ──
 let dragSrcIdx = null;
-function togglePanel(name) {
-  if (openPanel === name) { closePanel(); return; }
-  ['add','settings'].forEach(p => document.getElementById('panel-'+p).classList.remove('open'));
-  openPanel = name;
-  document.getElementById('panel-'+name).classList.add('open');
-  if (name === 'settings') switchTab('rom');
-}
 function closePanel() {
   if (openPanel) document.getElementById('panel-'+openPanel).classList.remove('open');
   openPanel = null;
@@ -668,10 +661,12 @@ function selectAddStore(store) {
   if (btn) btn.classList.add('active');
 }
 
-// Reset add panel when opened
-const _origToggle = togglePanel;
 function togglePanel(name) {
-  _origToggle(name);
+  if (openPanel === name) { closePanel(); return; }
+  ['add','settings'].forEach(p => document.getElementById('panel-'+p).classList.remove('open'));
+  openPanel = name;
+  document.getElementById('panel-'+name).classList.add('open');
+  if (name === 'settings') switchTab('rom');
   if (name === 'add') {
     addGroup = 'dagligvare'; addStore = 'kiwi';
     selectAddGroup('dagligvare');
