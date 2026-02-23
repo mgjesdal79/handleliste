@@ -650,15 +650,19 @@ function guessSection(text, sections) {
   return null;
 }
 
-function getItemStores(itemText) {
+function getItemStore(itemText) {
   const key = itemText.toLowerCase().trim();
   const stored = storeData[key];
-  if (stored && stored.stores && stored.stores.length) return stored.stores;
-  return ['kiwi']; // default
+  if (stored && stored.store) return stored.store;
+  return 'kiwi'; // default
+}
+
+function getItemStores(itemText) {
+  return [getItemStore(itemText)];
 }
 
 function isHighlighted(itemText, store) {
-  return getItemStores(itemText).includes(store);
+  return getItemStore(itemText) === store;
 }
 
 function renderList() {
@@ -679,8 +683,11 @@ function renderGrocery(container) {
   for (const item of listItems) {
     const key = item.text.toLowerCase().trim();
     const stored = storeData[key];
+    const itemStore = getItemStore(item.text);
+    // Skip andre items from grocery lists
+    if (itemStore === 'andre') continue;
     const sectionId = stored && stored.kiwiSection ? stored.kiwiSection : guessSection(item.text, kiwiSections);
-    const highlight = isHighlighted(item.text, currentStore);
+    const highlight = itemStore === currentStore;
     if (checkedItems[key]) { vogna.push({ ...item, sectionId, highlight }); continue; }
     if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId, highlight }); }
     else unknown.push({ ...item, highlight });
@@ -701,14 +708,11 @@ function renderAndre(container) {
   for (const item of listItems) {
     const key = item.text.toLowerCase().trim();
     const stored = storeData[key];
-    // Only show items that belong to andre
-    const stores = getItemStores(item.text);
-    if (!stores.includes('andre')) continue;
+    if (getItemStore(item.text) !== 'andre') continue;
     const sectionId = stored && stored.andreSection ? stored.andreSection : guessSection(item.text, andreSections);
-    const highlight = true;
-    if (checkedItems[key]) { vogna.push({ ...item, sectionId, highlight }); continue; }
-    if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId, highlight }); }
-    else unknown.push({ ...item, highlight });
+    if (checkedItems[key]) { vogna.push({ ...item, sectionId, highlight: true }); continue; }
+    if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId, highlight: true }); }
+    else unknown.push({ ...item, highlight: true });
   }
   let html = '';
   andreSections.forEach((sec, i) => {
@@ -729,11 +733,11 @@ function renderItem(item, store, inVogna = false) {
   const vognaClass = inVogna ? 'in-vogna' : '';
 
   // Store picker button label
-  const stores = getItemStores(item.text);
+  const itemStore = getItemStore(item.text);
   const storeLabels = { kiwi: 'K', rema: 'R', meny: 'M', andre: 'A' };
   const storeColors = { kiwi: 'has-kiwi', rema: 'has-rema', meny: 'has-meny', andre: 'has-andre' };
-  const btnLabel = stores.map(s => storeLabels[s] || s[0].toUpperCase()).join('·');
-  const btnColor = stores.length === 1 ? (storeColors[stores[0]] || '') : '';
+  const btnLabel = storeLabels[itemStore] || '?';
+  const btnColor = storeColors[itemStore] || '';
 
   // Section edit button (only for grocery stores when placed)
   let sectionBtn = '';
@@ -775,34 +779,26 @@ function openStorePicker(itemKey) {
   storePickerKey = itemKey;
   const decodedKey = decodeURIComponent(itemKey);
   document.getElementById('storeModalItem').textContent = decodedKey;
-  const currentStores = getItemStores(decodedKey);
+  const currentStore = getItemStore(decodedKey);
   const allStores = [
-    { id: 'kiwi', label: '🟢 Kiwi' },
-    { id: 'rema', label: '🔵 Rema 1000' },
-    { id: 'meny', label: '🔴 Meny' },
+    { id: 'kiwi',  label: '🟢 Kiwi' },
+    { id: 'rema',  label: '🔵 Rema 1000' },
+    { id: 'meny',  label: '🔴 Meny' },
     { id: 'andre', label: '🟣 Andre butikker' },
   ];
   document.getElementById('storeModalOptions').innerHTML = allStores.map(s => {
-    const active = currentStores.includes(s.id) ? 'active-store' : '';
-    const check = currentStores.includes(s.id) ? ' ✓' : '';
-    return `<button class="modal-option ${active}" data-store="${s.id}" onclick="toggleStoreForItem('${itemKey}','${s.id}')">${s.label}${check}</button>`;
+    const active = currentStore === s.id ? 'active-store' : '';
+    const check = currentStore === s.id ? ' ✓' : '';
+    return `<button class="modal-option ${active}" data-store="${s.id}" onclick="setStoreForItem('${itemKey}','${s.id}')">${s.label}${check}</button>`;
   }).join('');
   document.getElementById('storeModal').classList.add('open');
 }
 
-function toggleStoreForItem(itemKey, store) {
+function setStoreForItem(itemKey, store) {
   const key = decodeURIComponent(itemKey);
-  if (!storeData[key]) storeData[key] = { stores: ['kiwi'] };
-  if (!storeData[key].stores) storeData[key].stores = ['kiwi'];
-  const idx = storeData[key].stores.indexOf(store);
-  if (idx > -1) {
-    if (storeData[key].stores.length > 1) storeData[key].stores.splice(idx, 1);
-    // Don't allow removing last store
-  } else {
-    storeData[key].stores.push(store);
-  }
-  // Refresh modal options
-  openStorePicker(itemKey);
+  if (!storeData[key]) storeData[key] = {};
+  storeData[key].store = store;
+  closeStoreModal();
   scheduleSave();
 }
 
