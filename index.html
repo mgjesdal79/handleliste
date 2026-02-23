@@ -285,17 +285,7 @@
   <!-- ADD PANEL -->
   <div class="slide-panel" id="panel-add">
     <div class="slide-panel-inner">
-      <div class="add-store-selector">
-        <div class="add-store-group" id="addStoreGroup1">
-          <button class="add-store-btn active" data-group="dagligvare">Dagligvare</button>
-          <button class="add-store-btn" data-group="andre">Andre butikker</button>
-        </div>
-        <div class="add-store-group" id="addStoreGroup2">
-          <button class="add-store-btn active" data-addstore="kiwi">Kiwi</button>
-          <button class="add-store-btn" data-addstore="rema">Rema</button>
-          <button class="add-store-btn" data-addstore="meny">Meny</button>
-        </div>
-      </div>
+      <div id="addStoreSelectorInner"></div>
       <textarea id="addInput" placeholder="Én vare per linje..."></textarea>
       <div class="panel-actions">
         <button class="action-btn primary" onclick="addItems()">Legg til</button>
@@ -631,37 +621,35 @@ document.querySelectorAll('.store-btn').forEach(btn => {
 });
 
 // ── ADD PANEL STATE ──
-let addGroup = 'dagligvare'; // 'dagligvare' or 'andre'
-let addStore = 'kiwi';       // 'kiwi','rema','meny' or andreSection id
+let addGroup = 'dagligvare';
+let addStore = 'kiwi';
+
+function renderAddPanel() {
+  const el = document.getElementById('addStoreSelectorInner');
+  if (!el) return;
+  const secs = andreSections.length ? andreSections : defaultAndreSections;
+  const stores = addGroup === 'dagligvare'
+    ? [{id:'kiwi',label:'Kiwi',color:'#2d8a3e'},{id:'rema',label:'Rema',color:'#003087'},{id:'meny',label:'Meny',color:'#cc1b1b'}]
+    : secs.map(s => ({id:s.id,label:s.label,color:'#7c5cbf'}));
+  el.innerHTML = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      ${['dagligvare','andre'].map(g => `<button onclick="selectAddGroup('${g}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addGroup===g?'#1a1814':'#e0d9ce'};background:${addGroup===g?'#1a1814':'transparent'};color:${addGroup===g?'white':'#8a8070'};font-family:Syne,sans-serif;font-weight:600;font-size:0.8rem;cursor:pointer;">${g==='dagligvare'?'Dagligvare':'Andre butikker'}</button>`).join('')}
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      ${stores.map(s => `<button onclick="selectAddStore('${s.id}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addStore===s.id?s.color:'#e0d9ce'};background:${addStore===s.id?s.color:'transparent'};color:${addStore===s.id?'white':'#8a8070'};font-family:Syne,sans-serif;font-weight:600;font-size:0.8rem;cursor:pointer;">${s.label}</button>`).join('')}
+    </div>`;
+}
 
 function selectAddGroup(group) {
   addGroup = group;
-  document.querySelectorAll('#addStoreGroup1 [data-group]').forEach(b => b.classList.remove('active'));
-  document.querySelector(`#addStoreGroup1 [data-group="${group}"]`).classList.add('active');
-  const group2 = document.getElementById('addStoreGroup2');
-  if (group === 'dagligvare') {
-    if (!['kiwi','rema','meny'].includes(addStore)) addStore = 'kiwi';
-    group2.innerHTML = `
-      <button class="add-store-btn ${addStore==='kiwi'?'active':''}" data-addstore="kiwi">Kiwi</button>
-      <button class="add-store-btn ${addStore==='rema'?'active':''}" data-addstore="rema">Rema</button>
-      <button class="add-store-btn ${addStore==='meny'?'active':''}" data-addstore="meny">Meny</button>`;
-  } else {
-    const secs = andreSections.length ? andreSections : defaultAndreSections;
-    addStore = secs[0].id; // Always reset to first andre section
-    group2.innerHTML = secs.map((s, i) =>
-      `<button class="add-store-btn ${i===0?'active':''}" data-addstore="${s.id}">${s.label}</button>`
-    ).join('');
-  }
+  if (group === 'dagligvare') { if (!['kiwi','rema','meny'].includes(addStore)) addStore = 'kiwi'; }
+  else { const secs = andreSections.length ? andreSections : defaultAndreSections; addStore = secs[0].id; }
+  renderAddPanel();
 }
 
 function selectAddStore(store) {
   addStore = store;
-  // Update all buttons in group2
-  const group2 = document.getElementById('addStoreGroup2');
-  if (!group2) return;
-  group2.querySelectorAll('[data-addstore]').forEach(b => {
-    b.classList.toggle('active', b.dataset.addstore === store);
-  });
+  renderAddPanel();
 }
 
 function togglePanel(name) {
@@ -672,7 +660,7 @@ function togglePanel(name) {
   if (name === 'settings') switchTab('rom');
   if (name === 'add') {
     addGroup = 'dagligvare'; addStore = 'kiwi';
-    selectAddGroup('dagligvare');
+    renderAddPanel();
   }
 }
 function addItems() {
