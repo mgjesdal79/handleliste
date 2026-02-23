@@ -238,6 +238,20 @@
   .cat-add-btn { flex: 1; padding: 9px; border-radius: 8px; border: 1px dashed var(--border); background: transparent; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 0.82rem; cursor: pointer; color: var(--muted); }
   .cat-save-btn { flex: 1; padding: 9px; border-radius: 8px; border: none; background: var(--kiwi); color: white; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.82rem; cursor: pointer; }
 
+  .add-store-selector { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .add-store-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .add-store-btn {
+    padding: 7px 14px; border-radius: 100px; border: 2px solid var(--border);
+    background: transparent; font-family: 'Syne', sans-serif; font-weight: 600;
+    font-size: 0.8rem; cursor: pointer; color: var(--muted); transition: all 0.15s;
+  }
+  .add-store-btn.active[data-group="dagligvare"],
+  .add-store-btn.active[data-group="andre"] { background: var(--text); border-color: var(--text); color: white; }
+  .add-store-btn.active[data-addstore="kiwi"]  { background: var(--kiwi);  border-color: var(--kiwi);  color: white; }
+  .add-store-btn.active[data-addstore="rema"]  { background: var(--rema);  border-color: var(--rema);  color: white; }
+  .add-store-btn.active[data-addstore="meny"]  { background: var(--meny);  border-color: var(--meny);  color: white; }
+  .add-store-btn.active[data-addstore="andre"] { background: var(--andre); border-color: var(--andre); color: white; }
+
   .hidden { display: none !important; }
 </style>
 </head>
@@ -271,6 +285,17 @@
   <!-- ADD PANEL -->
   <div class="slide-panel" id="panel-add">
     <div class="slide-panel-inner">
+      <div class="add-store-selector">
+        <div class="add-store-group" id="addStoreGroup1">
+          <button class="add-store-btn active" data-group="dagligvare" onclick="selectAddGroup('dagligvare')">Dagligvare</button>
+          <button class="add-store-btn" data-group="andre" onclick="selectAddGroup('andre')">Andre butikker</button>
+        </div>
+        <div class="add-store-group" id="addStoreGroup2">
+          <button class="add-store-btn active" data-addstore="kiwi" onclick="selectAddStore('kiwi')">Kiwi</button>
+          <button class="add-store-btn" data-addstore="rema" onclick="selectAddStore('rema')">Rema</button>
+          <button class="add-store-btn" data-addstore="meny" onclick="selectAddStore('meny')">Meny</button>
+        </div>
+      </div>
       <textarea id="addInput" placeholder="Én vare per linje..."></textarea>
       <div class="panel-actions">
         <button class="action-btn primary" onclick="addItems()">Legg til</button>
@@ -612,15 +637,62 @@ document.querySelectorAll('.store-btn').forEach(btn => {
   });
 });
 
-// ── ADD ITEMS ──
+// ── ADD PANEL STATE ──
+let addGroup = 'dagligvare'; // 'dagligvare' or 'andre'
+let addStore = 'kiwi';       // 'kiwi','rema','meny' or andreSection id
+
+function selectAddGroup(group) {
+  addGroup = group;
+  document.querySelectorAll('[data-group]').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-group="${group}"]`).classList.add('active');
+  // Update second row
+  const group2 = document.getElementById('addStoreGroup2');
+  if (group === 'dagligvare') {
+    group2.innerHTML = `
+      <button class="add-store-btn ${addStore==='kiwi'?'active':''}" data-addstore="kiwi" onclick="selectAddStore('kiwi')">Kiwi</button>
+      <button class="add-store-btn ${addStore==='rema'?'active':''}" data-addstore="rema" onclick="selectAddStore('rema')">Rema</button>
+      <button class="add-store-btn ${addStore==='meny'?'active':''}" data-addstore="meny" onclick="selectAddStore('meny')">Meny</button>`;
+    if (!['kiwi','rema','meny'].includes(addStore)) { addStore = 'kiwi'; selectAddStore('kiwi'); }
+  } else {
+    group2.innerHTML = andreSections.map(s =>
+      `<button class="add-store-btn ${addStore===s.id?'active':''}" data-addstore="${s.id}" onclick="selectAddStore('${s.id}')">${s.label}</button>`
+    ).join('');
+    if (!andreSections.find(s => s.id === addStore)) { addStore = andreSections[0]?.id || 'a0'; selectAddStore(addStore); }
+  }
+}
+
+function selectAddStore(store) {
+  addStore = store;
+  document.querySelectorAll('[data-addstore]').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`[data-addstore="${store}"]`);
+  if (btn) btn.classList.add('active');
+}
+
+// Reset add panel when opened
+const _origToggle = togglePanel;
+function togglePanel(name) {
+  _origToggle(name);
+  if (name === 'add') {
+    addGroup = 'dagligvare'; addStore = 'kiwi';
+    selectAddGroup('dagligvare');
+  }
+}
 function addItems() {
   const textarea = document.getElementById('addInput');
   const raw = textarea.value.trim();
   if (!raw) { closePanel(); return; }
   const existing = new Set(listItems.map(i => i.text.toLowerCase().trim()));
+  const storeValue = addGroup === 'andre' ? 'andre' : addStore;
+  const andreSection = addGroup === 'andre' ? addStore : null;
   raw.split('\n').map(l => l.trim()).filter(l => l.length > 0).forEach(line => {
     const key = line.toLowerCase();
-    if (!existing.has(key)) { listItems.push({ text: line }); existing.add(key); }
+    if (!existing.has(key)) {
+      listItems.push({ text: line });
+      if (!storeData[key]) storeData[key] = {};
+      storeData[key].store = storeValue;
+      if (andreSection) storeData[key].andreSection = andreSection;
+      existing.add(key);
+    }
   });
   textarea.value = '';
   renderList();
