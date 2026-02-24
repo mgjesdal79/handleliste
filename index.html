@@ -11,6 +11,7 @@
 <link rel="manifest" href="manifest.json">
 <title>Handleliste</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maple-mono@1.0.0/index.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap">
 <style>
   :root {
     --bg: #f0ece4; --surface: #ffffff; --border: #d4cabf;
@@ -117,9 +118,9 @@
   .empty-state p { font-size: 0.9rem; line-height: 1.6; }
 
   .section-header {
-    font-family: 'Maple Mono', monospace; font-weight: 700; font-size: 0.72rem;
-    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
-    padding: 10px 0 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px; margin-top: 18px;
+    font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.7rem;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    padding: 8px 0 4px; border-bottom: 1px solid var(--border); margin-bottom: 3px; margin-top: 14px;
   }
   .section-header.in-vogna { margin-top: 32px; opacity: 0.5; }
 
@@ -131,7 +132,7 @@
   }
   .item-main {
     display: flex; align-items: center; gap: 10px;
-    flex: 1; padding: 11px 10px; cursor: pointer; transition: background 0.15s;
+    flex: 1; padding: 8px 10px; cursor: pointer; transition: background 0.15s;
   }
   .item-row:hover .item-main { background: var(--bg); }
   .item-row.highlighted { border-color: transparent; }
@@ -140,7 +141,7 @@
   .item-row.highlighted[data-store="meny"]  { background: var(--hi-meny);  border-color: var(--hi-meny-b); }
   .item-row.highlighted[data-store="andre"] { background: var(--hi-andre); border-color: var(--hi-andre-b); }
 
-  .item-name { flex: 1; font-size: 0.95rem; }
+  .item-name { flex: 1; font-size: 0.9rem; font-family: 'Maple Mono', monospace; }
   .item-row.in-vogna .item-name { text-decoration: line-through; color: var(--muted); }
 
   .check-circle {
@@ -157,7 +158,7 @@
 
   /* Store picker button */
   .store-picker-btn {
-    flex-shrink: 0; width: 44px; min-height: 44px;
+    flex-shrink: 0; width: 40px; min-height: 40px;
     border: none; border-left: 1px solid var(--border);
     background: transparent; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
