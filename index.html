@@ -59,9 +59,9 @@
   .store-group { display: flex; gap: 4px; }
   .store-group + .store-group { border-left: 1px solid var(--border); padding-left: 8px; }
   .store-btn {
-    padding: 5px 10px; border-radius: 100px; border: 2px solid var(--border);
-    background: transparent; font-family: 'Maple Mono', monospace; font-weight: 600;
-    font-size: 0.72rem; cursor: pointer; color: var(--muted); transition: all 0.18s; white-space: nowrap;
+    padding: 5px 13px; border-radius: 100px; border: 2px solid var(--border);
+    background: transparent; font-family: 'Maple Mono', monospace; font-weight: 700;
+    font-size: 0.78rem; cursor: pointer; color: var(--muted); transition: all 0.18s; white-space: nowrap;
   }
   .store-btn.active[data-store="kiwi"]  { background: var(--kiwi);  border-color: var(--kiwi);  color: white; }
   .store-btn.active[data-store="rema"]  { background: var(--rema);  border-color: var(--rema);  color: white; }
@@ -139,9 +139,9 @@
   .item-row.highlighted[data-store="kiwi"]  { background: var(--hi-kiwi);  border-color: var(--hi-kiwi-b); }
   .item-row.highlighted[data-store="rema"]  { background: var(--hi-rema);  border-color: var(--hi-rema-b); }
   .item-row.highlighted[data-store="meny"]  { background: var(--hi-meny);  border-color: var(--hi-meny-b); }
-  .item-row.highlighted[data-store="andre"] { background: var(--hi-andre); border-color: var(--hi-andre-b); }
+  .item-row.highlighted[data-store="andre"] { background: transparent; border-color: transparent; }
 
-  .item-name { flex: 1; font-size: 0.9rem; font-family: 'Maple Mono', monospace; }
+  .item-name { flex: 1; font-size: 0.92rem; font-family: 'DM Sans', sans-serif; }
   .item-row.in-vogna .item-name { text-decoration: line-through; color: var(--muted); }
 
   .check-circle {
@@ -233,6 +233,9 @@
   .cat-row.drag-over { border-color: var(--kiwi); background: var(--hi-kiwi); }
   .drag-handle { color: var(--border); font-size: 1rem; flex-shrink: 0; }
   .cat-name-input { flex: 1; border: none; background: transparent; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; color: var(--text); outline: none; min-width: 0; }
+  .cat-move-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.6rem; padding: 1px 3px; line-height: 1; border-radius: 3px; }
+  .cat-move-btn:hover { background: var(--border); }
+  .cat-move-btn:disabled { opacity: 0.2; cursor: default; }
   .cat-delete-btn { background: none; border: none; cursor: pointer; color: var(--border); font-size: 1rem; padding: 0 2px; flex-shrink: 0; transition: color 0.15s; }
   .cat-delete-btn:hover { color: var(--meny); }
   .cat-save-row { display: flex; gap: 8px; margin-top: 10px; }
@@ -271,12 +274,12 @@
   <div class="topbar">
     <h1>🛒</h1>
     <div class="store-group">
-      <button class="store-btn active" data-store="kiwi">Kiwi</button>
-      <button class="store-btn" data-store="rema">Rema</button>
-      <button class="store-btn" data-store="meny">Meny</button>
+      <button class="store-btn active" data-store="kiwi">K</button>
+      <button class="store-btn" data-store="rema">R</button>
+      <button class="store-btn" data-store="meny">M</button>
     </div>
     <div class="store-group">
-      <button class="store-btn" data-store="andre">Andre</button>
+      <button class="store-btn" data-store="andre">A</button>
     </div>
     <div class="sync-dot" id="syncDot"></div>
     <button class="icon-btn" onclick="togglePanel('add')">＋</button>
@@ -363,7 +366,6 @@
 
   <div class="bottom-bar" id="bottomBar" style="display:none">
     <button class="bottom-btn danger" onclick="toemVogna()">Tøm Vognå</button>
-    <button class="bottom-btn" onclick="document.getElementById('confirmModal').classList.add('open')">Ny handel</button>
   </div>
 </div>
 
@@ -660,7 +662,15 @@ function togglePanel(name) {
   document.getElementById('panel-'+name).classList.add('open');
   if (name === 'settings') switchTab('rom');
   if (name === 'add') {
-    addGroup = 'dagligvare'; addStore = 'kiwi';
+    // Context-aware: match current store view
+    if (currentStore === 'andre') {
+      addGroup = 'andre';
+      const secs = andreSections.length ? andreSections : defaultAndreSections;
+      addStore = secs[0].id;
+    } else {
+      addGroup = 'dagligvare';
+      addStore = currentStore; // kiwi, rema, or meny
+    }
     renderAddPanel();
   }
 }
@@ -904,15 +914,25 @@ function renderCatEditor(type) {
   const listId = type === 'andre' ? 'andreCatList' : 'kiwiCatList';
   const list = document.getElementById(listId);
   list.innerHTML = sections.map((sec, i) => `
-    <div class="cat-row" draggable="true" data-idx="${i}" data-type="${type}"
-      ondragstart="dragStart(event,${i},'${type}')" ondragover="dragOver(event,${i},'${type}')"
-      ondrop="dragDrop(event,${i},'${type}')" ondragend="dragEnd('${type}')">
-      <span class="drag-handle">⠿</span>
+    <div class="cat-row" data-idx="${i}" data-type="${type}">
+      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+        <button class="cat-move-btn" onclick="moveCat(${i},-1,'${type}')" ${i===0?'disabled':''}>▲</button>
+        <button class="cat-move-btn" onclick="moveCat(${i},1,'${type}')" ${i===sections.length-1?'disabled':''}>▼</button>
+      </div>
       <span style="color:var(--muted);font-size:0.78rem;flex-shrink:0;min-width:16px">${i}</span>
       <input class="cat-name-input" value="${sec.label.replace(/"/g,'&quot;')}" data-idx="${i}" data-type="${type}"
         onchange="getSections('${type}')[${i}].label=this.value">
       <button class="cat-delete-btn" onclick="deleteCat(${i},'${type}')">✕</button>
     </div>`).join('');
+}
+
+function moveCat(idx, dir, type) {
+  const sections = getSections(type);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= sections.length) return;
+  const moved = sections.splice(idx, 1)[0];
+  sections.splice(newIdx, 0, moved);
+  renderCatEditor(type);
 }
 
 function getSections(type) { return type === 'andre' ? andreSections : kiwiSections; }
