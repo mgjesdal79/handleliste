@@ -879,11 +879,14 @@ function openItemDrawer(itemKey, store) {
   }
 
   const sections = store === 'andre' ? andreSections : kiwiSections;
+  const curSection = store === 'andre' ? storeData[decodedKey]?.andreSection : storeData[decodedKey]?.kiwiSection;
+  const guessed = curSection || guessSection(decodedKey, sections);
   document.getElementById('sectionOptions').innerHTML =
     (store !== 'andre' ? `<div style="font-family:'Maple Mono',monospace;font-weight:700;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:#6b5f52;margin-bottom:8px">Plassering i butikk</div>` : '') +
-    sections.map((sec, i) =>
-      `<button class="section-option" onclick="assignSection('${sec.id}')">${store==='andre'?sec.label:i+' · '+sec.label}</button>`
-    ).join('');
+    sections.map((sec, i) => {
+      const isActive = guessed === sec.id;
+      return `<button class="section-option" onclick="assignSection('${sec.id}')" style="${isActive?'border-color:#1e7a2e;background:#1e7a2e18;font-weight:600;':''}">${store==='andre'?sec.label:i+' · '+sec.label}${isActive?' ✓':''}</button>`;
+    }).join('');
 
   document.getElementById('sectionModal').classList.add('open');
 }
