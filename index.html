@@ -381,21 +381,15 @@
   </div>
 </div>
 
-<!-- STORE PICKER MODAL -->
-<div class="modal-backdrop" id="storeModal">
-  <div class="modal">
-    <div class="modal-title">Hvilke butikker?</div>
-    <div class="modal-subtitle" id="storeModalItem"></div>
-    <div id="storeModalOptions"></div>
-    <button class="modal-cancel" onclick="closeStoreModal()">Ferdig</button>
-  </div>
-</div>
+<!-- STORE PICKER MODAL (kept for legacy, hidden) -->
+<div id="storeModal" style="display:none"></div>
 
-<!-- SECTION PICKER MODAL -->
-<div class="modal-backdrop" id="sectionModal">
+<!-- SECTION PICKER MODAL (now includes store selector for grocery) -->
+<div class="modal-backdrop" id="sectionModal" onclick="handleModalBackdrop(event,'sectionModal')">
   <div class="modal">
-    <div class="modal-title" id="sectionModalTitle">Hvor i butikken?</div>
+    <div class="modal-title" id="sectionModalTitle">Rediger vare</div>
     <div class="modal-subtitle" id="sectionModalItem"></div>
+    <div id="storePickerSection" style="margin-bottom:16px"></div>
     <div id="sectionOptions"></div>
     <button class="modal-cancel" onclick="closeSectionModal()">Avbryt</button>
   </div>
@@ -779,6 +773,14 @@ function renderGrocery(container) {
   container.innerHTML = html; attachEvents();
 }
 
+let collapsedSections = new Set();
+
+function toggleAndreSection(secId) {
+  if (collapsedSections.has(secId)) collapsedSections.delete(secId);
+  else collapsedSections.add(secId);
+  renderList();
+}
+
 function renderAndre(container) {
   const sections = {}, unknown = [], vogna = [];
   for (const item of listItems) {
@@ -791,49 +793,37 @@ function renderAndre(container) {
     else unknown.push({ ...item, highlight: true });
   }
   let html = '';
-  andreSections.forEach((sec, i) => {
+  andreSections.forEach(sec => {
     const items = sections[sec.id]; if (!items || !items.length) return;
-    html += `<div class="section-header">${sec.label}</div>`;
-    items.forEach(item => html += renderItem(item, 'andre'));
+    const collapsed = collapsedSections.has(sec.id);
+    html += `<div class="section-header andre-collapsible" onclick="toggleAndreSection('${sec.id}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+      <span>${sec.label} <span style="font-weight:400;opacity:0.6">· ${items.length}</span></span>
+      <span style="font-size:0.7rem">${collapsed ? '▶' : '▼'}</span>
+    </div>`;
+    if (!collapsed) items.forEach(item => html += renderItem(item, 'andre'));
   });
   if (unknown.length) { html += `<div class="section-header">Ikke plassert</div>`; unknown.forEach(item => html += renderItem(item, 'andre')); }
   if (vogna.length) { html += `<div class="section-header in-vogna">✓ Vognå</div>`; vogna.forEach(item => html += renderItem(item, 'andre', true)); }
-  if (!html) html = `<div class="empty-state"><div class="emoji">🏪</div><p>Ingen varer lagt til for Andre butikker ennå.<br>Legg til varer og trykk butikkknappen på dem.</p></div>`;
+  if (!html) html = `<div class="empty-state"><div class="emoji">🏪</div><p>Ingen varer lagt til for Andre butikker ennå.</p></div>`;
   container.innerHTML = html; attachEvents();
 }
 
 function renderItem(item, store, inVogna = false) {
   const key = encodeURIComponent(item.text.toLowerCase().trim());
-  const decodedKey = item.text.toLowerCase().trim();
   const highlight = item.highlight && !inVogna ? 'highlighted' : '';
   const vognaClass = inVogna ? 'in-vogna' : '';
 
-  // Store picker button label
-  const itemStore = getItemStore(item.text);
-  const storeLabels = { kiwi: 'K', rema: 'R', meny: 'M', andre: 'A' };
-  const storeColors = { kiwi: 'has-kiwi', rema: 'has-rema', meny: 'has-meny', andre: 'has-andre' };
-  const btnLabel = storeLabels[itemStore] || '?';
-  const btnColor = storeColors[itemStore] || '';
-
-  // Section edit button (only for grocery stores when placed)
-  let sectionBtn = '';
-  if (!inVogna && store !== 'andre') {
-    const isUnknown = !item.sectionId;
-    if (isUnknown) sectionBtn = `<button class="place-btn" onclick="event.stopPropagation();openSectionPicker('${key}','kiwi')">Plasser</button>`;
-    else sectionBtn = `<button class="edit-btn" onclick="event.stopPropagation();openSectionPicker('${key}','kiwi')">✏️</button>`;
-  } else if (!inVogna && store === 'andre') {
-    const isUnknown = !item.sectionId;
-    if (isUnknown) sectionBtn = `<button class="place-btn" onclick="event.stopPropagation();openSectionPicker('${key}','andre')">Butikk?</button>`;
-    else sectionBtn = `<button class="edit-btn" onclick="event.stopPropagation();openSectionPicker('${key}','andre')">✏️</button>`;
+  let editBtn = '';
+  if (!inVogna) {
+    editBtn = `<button class="edit-btn" onclick="event.stopPropagation();openItemDrawer('${key}','${store}')">✏️</button>`;
   }
 
   return `<div class="item-row ${highlight} ${vognaClass}" data-item="${key}" data-store="${store}">
     <div class="item-main">
       <div class="check-circle"></div>
       <span class="item-name">${item.text}</span>
-      ${sectionBtn}
+      ${editBtn}
     </div>
-    <button class="store-picker-btn ${btnColor}" onclick="event.stopPropagation();openStorePicker('${key}')">${btnLabel}</button>
   </div>`;
 }
 
@@ -849,64 +839,81 @@ function attachEvents() {
   });
 }
 
-// ── STORE PICKER MODAL ──
+// ── ITEM DRAWER (unified) ──
 let storePickerKey = null;
-function openStorePicker(itemKey) {
-  storePickerKey = itemKey;
+let sectionPickerKey = null;
+let sectionPickerType = 'kiwi';
+
+function handleModalBackdrop(e, id) {
+  if (e.target === e.currentTarget) {
+    document.getElementById(id).classList.remove('open');
+    renderList();
+  }
+}
+
+function openItemDrawer(itemKey, store) {
+  sectionPickerKey = itemKey;
+  sectionPickerType = store === 'andre' ? 'andre' : 'kiwi';
   const decodedKey = decodeURIComponent(itemKey);
-  document.getElementById('storeModalItem').textContent = decodedKey;
-  const currentStore = getItemStore(decodedKey);
-  const allStores = [
-    { id: 'kiwi',  label: '🟢 Kiwi' },
-    { id: 'rema',  label: '🔵 Rema 1000' },
-    { id: 'meny',  label: '🔴 Meny' },
-    { id: 'andre', label: '🟣 Andre butikker' },
-  ];
-  document.getElementById('storeModalOptions').innerHTML = allStores.map(s => {
-    const active = currentStore === s.id ? 'active-store' : '';
-    const check = currentStore === s.id ? ' ✓' : '';
-    return `<button class="modal-option ${active}" data-store="${s.id}" onclick="setStoreForItem('${itemKey}','${s.id}')">${s.label}${check}</button>`;
-  }).join('');
-  document.getElementById('storeModal').classList.add('open');
+  document.getElementById('sectionModalItem').textContent = decodedKey;
+
+  const storePicker = document.getElementById('storePickerSection');
+  if (store !== 'andre') {
+    const cur = getItemStore(decodedKey);
+    const stores = [
+      {id:'kiwi', label:'🟢 Kiwi',  color:'#1e7a2e'},
+      {id:'rema', label:'🔵 Rema',  color:'#002070'},
+      {id:'meny', label:'🔴 Meny',  color:'#b51515'}
+    ];
+    storePicker.innerHTML =
+      `<div style="font-family:'Maple Mono',monospace;font-weight:700;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:#6b5f52;margin-bottom:8px">Hvilken butikk?</div>` +
+      stores.map(s =>
+        `<button onclick="setStoreForItem('${itemKey}','${s.id}')" style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:5px;border-radius:8px;border:1px solid ${cur===s.id?s.color:'#d4cabf'};background:${cur===s.id?s.color+'18':'transparent'};font-family:'DM Sans',sans-serif;font-size:0.9rem;cursor:pointer;color:#0f0e0b;font-weight:${cur===s.id?'600':'400'}">${s.label}${cur===s.id?' ✓':''}</button>`
+      ).join('');
+    storePicker.style.display = 'block';
+    document.getElementById('sectionModalTitle').textContent = 'Rediger vare';
+  } else {
+    storePicker.innerHTML = '';
+    storePicker.style.display = 'none';
+    document.getElementById('sectionModalTitle').textContent = 'Hvilken butikk?';
+  }
+
+  const sections = store === 'andre' ? andreSections : kiwiSections;
+  document.getElementById('sectionOptions').innerHTML =
+    (store !== 'andre' ? `<div style="font-family:'Maple Mono',monospace;font-weight:700;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:#6b5f52;margin-bottom:8px">Plassering i butikk</div>` : '') +
+    sections.map((sec, i) =>
+      `<button class="section-option" onclick="assignSection('${sec.id}')">${store==='andre'?sec.label:i+' · '+sec.label}</button>`
+    ).join('');
+
+  document.getElementById('sectionModal').classList.add('open');
 }
 
 function setStoreForItem(itemKey, store) {
   const key = decodeURIComponent(itemKey);
   if (!storeData[key]) storeData[key] = {};
   storeData[key].store = store;
-  closeStoreModal();
+  openItemDrawer(itemKey, currentStore);
   scheduleSave();
 }
 
-function closeStoreModal() {
-  document.getElementById('storeModal').classList.remove('open');
-  storePickerKey = null;
+function closeSectionModal() {
+  document.getElementById('sectionModal').classList.remove('open');
+  sectionPickerKey = null;
   renderList();
 }
 
-// ── SECTION PICKER MODAL ──
-let sectionPickerKey = null;
-let sectionPickerType = 'kiwi';
-function openSectionPicker(itemKey, type) {
-  sectionPickerKey = itemKey;
-  sectionPickerType = type;
-  document.getElementById('sectionModalItem').textContent = decodeURIComponent(itemKey);
-  document.getElementById('sectionModalTitle').textContent = type === 'andre' ? 'Hvilken butikk?' : 'Hvor i Kiwi?';
-  const sections = type === 'andre' ? andreSections : kiwiSections;
-  document.getElementById('sectionOptions').innerHTML = sections.map((sec, i) =>
-    `<button class="section-option" onclick="assignSection('${sec.id}')">${type === 'andre' ? sec.label : i + ' · ' + sec.label}</button>`
-  ).join('');
-  document.getElementById('sectionModal').classList.add('open');
-}
-function closeSectionModal() { document.getElementById('sectionModal').classList.remove('open'); sectionPickerKey = null; }
 function assignSection(sectionId) {
   if (!sectionPickerKey) return;
   const key = decodeURIComponent(sectionPickerKey);
-  if (!storeData[key]) storeData[key] = { stores: ['kiwi'] };
+  if (!storeData[key]) storeData[key] = {};
   if (sectionPickerType === 'andre') storeData[key].andreSection = sectionId;
   else storeData[key].kiwiSection = sectionId;
-  closeSectionModal(); renderList(); scheduleSave();
+  closeSectionModal(); scheduleSave();
 }
+
+function openStorePicker() {}
+function closeStoreModal() { closeSectionModal(); }
+function openSectionPicker() {}
 
 // ── CATEGORY EDITOR ──
 function renderCatEditor(type) {
