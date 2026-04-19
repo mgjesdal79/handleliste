@@ -16,10 +16,10 @@
   :root {
     --bg: #f0ece4; --surface: #ffffff; --border: #d4cabf;
     --text: #0f0e0b; --muted: #6b5f52;
-    --kiwi: #1e7a2e; --rema: #002070; --meny: #b51515; --andre: #6040b0;
+    --kiwi: #1e7a2e; --rema: #002070; --meny: #d46000; --andre: #6040b0;
     --hi-kiwi: #c8e8d0; --hi-kiwi-b: #5db87a;
     --hi-rema: #c8d8f0; --hi-rema-b: #5a9ad0;
-    --hi-meny: #f5c8cc; --hi-meny-b: #d06060;
+    --hi-meny: #fde8d0; --hi-meny-b: #e08840;
     --hi-andre: #e4daf5; --hi-andre-b: #9070d0;
     --radius: 10px;
   }
@@ -85,6 +85,8 @@
   .sync-dot.error   { background: var(--meny); }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
+  button:focus, .item-row:focus, .item-main:focus { outline: none; }
+  button:focus-visible { outline: 2px solid var(--kiwi); outline-offset: 2px; }
   .icon-btn { background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 2px 5px; border-radius: 8px; color: var(--text); transition: background 0.15s; line-height: 1; }
   .icon-btn:hover { background: var(--border); }
 
@@ -108,7 +110,7 @@
 
   textarea {
     width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px;
-    font-family: 'DM Sans', sans-serif; font-size: 0.88rem; line-height: 1.6;
+    font-family: 'DM Sans', sans-serif; font-size: 1rem; line-height: 1.6;
     background: var(--bg); color: var(--text); resize: vertical; min-height: 100px; outline: none;
   }
   textarea:focus { border-color: var(--kiwi); }
@@ -453,9 +455,8 @@ const defaultAndreSections = [
 // ── STATE ──
 let kiwiSections = JSON.parse(JSON.stringify(defaultKiwiSections));
 let andreSections = JSON.parse(JSON.stringify(defaultAndreSections));
+// Items: [{ id, text, store, kiwiSection, andreSection, checked }]
 let listItems = [];
-let storeData = {}; // { itemKey: { stores: ['kiwi','rema'], kiwiSection: 'k3', andreSection: 'a1' } }
-let checkedItems = {};
 let currentStore = 'kiwi';
 let currentRoomCode = null;
 let openPanel = null;
@@ -463,6 +464,8 @@ let saveTimeout = null;
 let pollInterval = null;
 let isSaving = false;
 let lastDataHash = null;
+
+function genId() { return Math.random().toString(36).slice(2,10); }
 
 // ── ROOM CODE STORAGE ──
 function saveRoomCode(code) {
@@ -492,7 +495,7 @@ async function createRoom() {
   try {
     await sbFetch('list_items', 'POST', {
       room_code: code,
-      data: JSON.stringify({ items: [], storeData: {}, checkedItems: {} }),
+      data: JSON.stringify({ items: [] }),
       categories: JSON.stringify({ kiwi: defaultKiwiSections, andre: defaultAndreSections })
     });
     await enterRoom(code);
@@ -527,10 +530,29 @@ async function enterRoom(code, row = null) {
 function loadFromRow(row) {
   try {
     const d = JSON.parse(row.data || '{}');
-    listItems = d.items || [];
-    storeData = d.storeData || {};
-    checkedItems = d.checkedItems || {};
-  } catch(e) {}
+    if (d.items && d.items.length && d.items[0].id) {
+      // New ID-based format
+      listItems = d.items;
+    } else if (d.items) {
+      // Migrate old format: items + storeData + checkedItems
+      const storeData = d.storeData || {};
+      const checkedItems = d.checkedItems || {};
+      listItems = d.items.map(item => {
+        const key = item.text.toLowerCase().trim();
+        const sd = storeData[key] || {};
+        let store = sd.store || (sd.stores && sd.stores[0]) || 'kiwi';
+        if (sd.stores && sd.stores.includes('andre')) store = 'andre';
+        return {
+          id: genId(),
+          text: item.text,
+          store,
+          kiwiSection: sd.kiwiSection || null,
+          andreSection: sd.andreSection || null,
+          checked: checkedItems[key] || false
+        };
+      });
+    }
+  } catch(e) { listItems = []; }
   try {
     const cats = JSON.parse(row.categories || 'null');
     if (cats) {
@@ -552,7 +574,7 @@ function leaveRoom() {
   clearInterval(pollInterval);
   currentRoomCode = null;
   clearRoomCode();
-  listItems = []; storeData = {}; checkedItems = {};
+  listItems = [];
   document.getElementById('mainApp').classList.add('hidden');
   document.getElementById('roomScreen').classList.remove('hidden');
   document.getElementById('roomCodeInput').value = '';
@@ -576,7 +598,7 @@ async function saveToCloud() {
   if (!currentRoomCode) return;
   isSaving = true; setSyncStatus('syncing');
   try {
-    const dataStr = JSON.stringify({ items: listItems, storeData, checkedItems });
+    const dataStr = JSON.stringify({ items: listItems });
     const catStr  = JSON.stringify({ kiwi: kiwiSections, andre: andreSections });
     await sbFetch(`list_items?room_code=eq.${currentRoomCode}`, 'PATCH', { data: dataStr, categories: catStr });
     lastDataHash = dataStr + catStr;
@@ -637,7 +659,7 @@ function renderAddPanel() {
   if (!el) return;
   const secs = andreSections.length ? andreSections : defaultAndreSections;
   const stores = addGroup === 'dagligvare'
-    ? [{id:'kiwi',label:'Kiwi',color:'#2d8a3e'},{id:'rema',label:'Rema',color:'#003087'},{id:'meny',label:'Meny',color:'#cc1b1b'}]
+    ? [{id:'kiwi',label:'Kiwi',color:'#2d8a3e'},{id:'rema',label:'Rema',color:'#003087'},{id:'meny',label:'Mega/Meny',color:'#d46000'}]
     : secs.map(s => ({id:s.id,label:s.label,color:'#7c5cbf'}));
   el.innerHTML = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
@@ -683,18 +705,17 @@ function addItems() {
   const textarea = document.getElementById('addInput');
   const raw = textarea.value.trim();
   if (!raw) { closePanel(); return; }
-  const existing = new Set(listItems.map(i => i.text.toLowerCase().trim()));
   const storeValue = addGroup === 'andre' ? 'andre' : addStore;
   const andreSection = addGroup === 'andre' ? addStore : null;
   raw.split('\n').map(l => l.trim()).filter(l => l.length > 0).forEach(line => {
-    const key = line.toLowerCase();
-    if (!existing.has(key)) {
-      listItems.push({ text: line });
-      if (!storeData[key]) storeData[key] = {};
-      storeData[key].store = storeValue;
-      if (andreSection) storeData[key].andreSection = andreSection;
-      existing.add(key);
-    }
+    listItems.push({
+      id: genId(),
+      text: line,
+      store: storeValue,
+      kiwiSection: null,
+      andreSection: andreSection,
+      checked: false
+    });
   });
   textarea.value = '';
   renderList();
@@ -703,15 +724,13 @@ function addItems() {
 }
 
 function toemVogna() {
-  const toRemove = new Set(Object.keys(checkedItems).filter(k => checkedItems[k]));
-  listItems = listItems.filter(i => !toRemove.has(i.text.toLowerCase().trim()));
-  checkedItems = {};
+  listItems = listItems.filter(i => !i.checked);
   renderList(); scheduleSave();
 }
 
 function nyHandel() {
   document.getElementById('confirmModal').classList.remove('open');
-  listItems = []; checkedItems = {};
+  listItems = [];
   renderList(); scheduleSave();
 }
 
@@ -722,28 +741,6 @@ function guessSection(text, sections) {
     if (sec.keywords && sec.keywords.some(k => lower.includes(k))) return sec.id;
   }
   return null;
-}
-
-function getItemStore(itemText) {
-  const key = itemText.toLowerCase().trim();
-  const stored = storeData[key];
-  if (!stored) return 'kiwi';
-  // New format
-  if (stored.store) return stored.store;
-  // Old format: { stores: ['kiwi'] }
-  if (stored.stores && stored.stores.length) {
-    if (stored.stores.includes('andre')) return 'andre';
-    return stored.stores[0];
-  }
-  return 'kiwi';
-}
-
-function getItemStores(itemText) {
-  return [getItemStore(itemText)];
-}
-
-function isHighlighted(itemText, store) {
-  return getItemStore(itemText) === store;
 }
 
 function renderList() {
@@ -762,14 +759,10 @@ function renderList() {
 function renderGrocery(container) {
   const sections = {}, unknown = [], vogna = [];
   for (const item of listItems) {
-    const key = item.text.toLowerCase().trim();
-    const stored = storeData[key];
-    const itemStore = getItemStore(item.text);
-    // Skip andre items from grocery lists
-    if (itemStore === 'andre') continue;
-    const sectionId = stored && stored.kiwiSection ? stored.kiwiSection : guessSection(item.text, kiwiSections);
-    const highlight = itemStore === currentStore;
-    if (checkedItems[key]) { vogna.push({ ...item, sectionId, highlight }); continue; }
+    if (item.store === 'andre') continue;
+    const sectionId = item.kiwiSection || guessSection(item.text, kiwiSections);
+    const highlight = item.store === currentStore;
+    if (item.checked) { vogna.push({ ...item, sectionId, highlight }); continue; }
     if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId, highlight }); }
     else unknown.push({ ...item, highlight });
   }
@@ -795,13 +788,11 @@ function toggleAndreSection(secId) {
 function renderAndre(container) {
   const sections = {}, unknown = [], vogna = [];
   for (const item of listItems) {
-    const key = item.text.toLowerCase().trim();
-    const stored = storeData[key];
-    if (getItemStore(item.text) !== 'andre') continue;
-    const sectionId = stored && stored.andreSection ? stored.andreSection : guessSection(item.text, andreSections);
-    if (checkedItems[key]) { vogna.push({ ...item, sectionId, highlight: true }); continue; }
-    if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId, highlight: true }); }
-    else unknown.push({ ...item, highlight: true });
+    if (item.store !== 'andre') continue;
+    const sectionId = item.andreSection || guessSection(item.text, andreSections);
+    if (item.checked) { vogna.push({ ...item, sectionId }); continue; }
+    if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId }); }
+    else unknown.push({ ...item });
   }
   let html = '';
   andreSections.forEach(sec => {
@@ -820,16 +811,13 @@ function renderAndre(container) {
 }
 
 function renderItem(item, store, inVogna = false) {
-  const key = encodeURIComponent(item.text.toLowerCase().trim());
   const highlight = item.highlight && !inVogna ? 'highlighted' : '';
   const vognaClass = inVogna ? 'in-vogna' : '';
-
   let editBtn = '';
   if (!inVogna) {
-    editBtn = `<button class="edit-btn" onclick="event.stopPropagation();openItemDrawer('${key}','${store}')">✏️</button>`;
+    editBtn = `<button class="edit-btn" onclick="event.stopPropagation();openItemDrawer('${item.id}','${store}')">✏️</button>`;
   }
-
-  return `<div class="item-row ${highlight} ${vognaClass}" data-item="${key}" data-store="${store}">
+  return `<div class="item-row ${highlight} ${vognaClass}" data-id="${item.id}" data-store="${store}">
     <div class="item-main">
       <div class="check-circle"></div>
       <span class="item-name">${item.text}</span>
@@ -841,19 +829,17 @@ function renderItem(item, store, inVogna = false) {
 function attachEvents() {
   document.querySelectorAll('.item-main').forEach(main => {
     main.addEventListener('click', e => {
-      if (['edit-btn','place-btn'].some(c => e.target.classList.contains(c))) return;
+      if (e.target.classList.contains('edit-btn')) return;
       const row = main.closest('.item-row');
-      const key = decodeURIComponent(row.dataset.item);
-      checkedItems[key] = !checkedItems[key];
-      renderList(); scheduleSave();
+      const id = row.dataset.id;
+      const item = listItems.find(i => i.id === id);
+      if (item) { item.checked = !item.checked; renderList(); scheduleSave(); }
     });
   });
 }
 
 // ── ITEM DRAWER (unified) ──
-let storePickerKey = null;
-let sectionPickerKey = null;
-let sectionPickerType = 'kiwi';
+let activeItemId = null;
 
 function handleModalBackdrop(e, id) {
   if (e.target === e.currentTarget) {
@@ -862,24 +848,23 @@ function handleModalBackdrop(e, id) {
   }
 }
 
-function openItemDrawer(itemKey, store) {
-  sectionPickerKey = itemKey;
-  sectionPickerType = store === 'andre' ? 'andre' : 'kiwi';
-  const decodedKey = decodeURIComponent(itemKey);
-  document.getElementById('sectionModalItem').textContent = decodedKey;
+function openItemDrawer(itemId, store) {
+  activeItemId = itemId;
+  const item = listItems.find(i => i.id === itemId);
+  if (!item) return;
+  document.getElementById('sectionModalItem').textContent = item.text;
 
   const storePicker = document.getElementById('storePickerSection');
   if (store !== 'andre') {
-    const cur = getItemStore(decodedKey);
     const stores = [
       {id:'kiwi', label:'🟢 Kiwi',  color:'#1e7a2e'},
       {id:'rema', label:'🔵 Rema',  color:'#002070'},
-      {id:'meny', label:'🔴 Meny',  color:'#b51515'}
+      {id:'meny', label:'🟠 Mega/Meny',  color:'#d46000'}
     ];
     storePicker.innerHTML =
       `<div style="font-family:'Maple Mono',monospace;font-weight:700;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:#6b5f52;margin-bottom:8px">Hvilken butikk?</div>` +
       stores.map(s =>
-        `<button onclick="setStoreForItem('${itemKey}','${s.id}')" style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:5px;border-radius:8px;border:1px solid ${cur===s.id?s.color:'#d4cabf'};background:${cur===s.id?s.color+'18':'transparent'};font-family:'DM Sans',sans-serif;font-size:0.9rem;cursor:pointer;color:#0f0e0b;font-weight:${cur===s.id?'600':'400'}">${s.label}${cur===s.id?' ✓':''}</button>`
+        `<button onclick="setItemStore('${itemId}','${s.id}')" style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:5px;border-radius:8px;border:1px solid ${item.store===s.id?s.color:'#d4cabf'};background:${item.store===s.id?s.color+'18':'transparent'};font-family:'DM Sans',sans-serif;font-size:0.9rem;cursor:pointer;color:#0f0e0b;font-weight:${item.store===s.id?'600':'400'}">${s.label}${item.store===s.id?' ✓':''}</button>`
       ).join('');
     storePicker.style.display = 'block';
     document.getElementById('sectionModalTitle').textContent = 'Rediger vare';
@@ -890,44 +875,46 @@ function openItemDrawer(itemKey, store) {
   }
 
   const sections = store === 'andre' ? andreSections : kiwiSections;
-  const curSection = store === 'andre' ? storeData[decodedKey]?.andreSection : storeData[decodedKey]?.kiwiSection;
-  const guessed = curSection || guessSection(decodedKey, sections);
+  const curSection = store === 'andre' ? item.andreSection : item.kiwiSection;
+  const guessed = curSection || guessSection(item.text, sections);
   document.getElementById('sectionOptions').innerHTML =
     (store !== 'andre' ? `<div style="font-family:'Maple Mono',monospace;font-weight:700;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:#6b5f52;margin-bottom:8px">Plassering i butikk</div>` : '') +
     sections.map((sec, i) => {
       const isActive = guessed === sec.id;
-      return `<button class="section-option" onclick="assignSection('${sec.id}')" style="${isActive?'border-color:#1e7a2e;background:#1e7a2e18;font-weight:600;':''}">${store==='andre'?sec.label:i+' · '+sec.label}${isActive?' ✓':''}</button>`;
+      return `<button class="section-option" onclick="assignItemSection('${sec.id}','${store}')" style="${isActive?'border-color:#1e7a2e;background:#1e7a2e18;font-weight:600;':''}">${store==='andre'?sec.label:i+' · '+sec.label}${isActive?' ✓':''}</button>`;
     }).join('');
 
   document.getElementById('sectionModal').classList.add('open');
 }
 
-function setStoreForItem(itemKey, store) {
-  const key = decodeURIComponent(itemKey);
-  if (!storeData[key]) storeData[key] = {};
-  storeData[key].store = store;
-  openItemDrawer(itemKey, currentStore);
+function setItemStore(itemId, store) {
+  const item = listItems.find(i => i.id === itemId);
+  if (!item) return;
+  item.store = store;
+  openItemDrawer(itemId, currentStore);
   scheduleSave();
+}
+
+function assignItemSection(sectionId, store) {
+  const item = listItems.find(i => i.id === activeItemId);
+  if (!item) return;
+  if (store === 'andre') item.andreSection = sectionId;
+  else item.kiwiSection = sectionId;
+  closeSectionModal(); scheduleSave();
 }
 
 function closeSectionModal() {
   document.getElementById('sectionModal').classList.remove('open');
-  sectionPickerKey = null;
+  activeItemId = null;
   renderList();
 }
 
-function assignSection(sectionId) {
-  if (!sectionPickerKey) return;
-  const key = decodeURIComponent(sectionPickerKey);
-  if (!storeData[key]) storeData[key] = {};
-  if (sectionPickerType === 'andre') storeData[key].andreSection = sectionId;
-  else storeData[key].kiwiSection = sectionId;
-  closeSectionModal(); scheduleSave();
-}
-
+// Legacy stubs
 function openStorePicker() {}
 function closeStoreModal() { closeSectionModal(); }
 function openSectionPicker() {}
+function setStoreForItem() {}
+function assignSection() {}
 
 // ── CATEGORY EDITOR ──
 function renderCatEditor(type) {
@@ -1002,7 +989,7 @@ function dragEnd(type) {
 }
 
 // ── EXPORT / IMPORT ──
-function doExport() { document.getElementById('exportText').value = JSON.stringify({ storeData, kiwi: kiwiSections, andre: andreSections }, null, 2); }
+function doExport() { document.getElementById('exportText').value = JSON.stringify({ items: listItems, kiwi: kiwiSections, andre: andreSections }, null, 2); }
 function copyExport() {
   if (!document.getElementById('exportText').value) doExport();
   const ta = document.getElementById('exportText'); ta.select(); document.execCommand('copy');
@@ -1012,7 +999,7 @@ function copyExport() {
 function doImport() {
   try {
     const p = JSON.parse(document.getElementById('importText').value.trim());
-    if (p.storeData) storeData = p.storeData;
+    if (p.items) listItems = p.items;
     if (p.kiwi) kiwiSections.splice(0, kiwiSections.length, ...p.kiwi);
     if (p.andre) andreSections.splice(0, andreSections.length, ...p.andre);
     document.getElementById('importText').value = '';
