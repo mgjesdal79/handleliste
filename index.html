@@ -664,14 +664,25 @@ function scheduleSave() {
 
 async function pollCloud() {
   if (!currentRoomCode || isSaving || saveTimeout) return;
-  try {
-    const rows = await sbFetch(`list_items?room_code=eq.${currentRoomCode}&select=data,categories`);
-    if (!rows || !rows[0]) return;
-    const hash = rows[0].data + (rows[0].categories || '');
-    if (hash !== lastDataHash) { lastDataHash = hash; loadFromRow(rows[0]); renderList(); setSyncStatus('synced'); }
-  } catch(e) { setSyncStatus('error'); }
-}
 
+  try {
+    const result = await api('load', currentRoomCode);
+
+    if (!result.data) return;
+
+    const hash = result.data.data + (result.data.categories || '');
+
+    if (hash !== lastDataHash) {
+      lastDataHash = hash;
+      loadFromRow(result.data);
+      renderList();
+      setSyncStatus('synced');
+    }
+  } catch (e) {
+    setSyncStatus('error');
+  }
+}
+  
 function startPolling() { clearInterval(pollInterval); pollInterval = setInterval(pollCloud, 5000); }
 
 // ── PANEL ──
