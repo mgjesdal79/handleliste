@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#f5f2ec">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
-<title>Handleliste v2</title>
+<title>Handleliste v2.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maple-mono@1.0.0/index.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap">
 <style>
@@ -487,10 +487,21 @@ function saveRoomCode(code) {
   history.replaceState(null, '', '#' + code);
 }
 function getSavedRoomCode() {
-  const hash = window.location.hash.replace('#','').trim().toUpperCase();
-  if (hash && hash.length >= 4) return hash;
-  try { const s = sessionStorage.getItem('lastRoomCode'); if (s) return s; } catch(e) {}
-  try { const s = localStorage.getItem('lastRoomCode'); if (s) return s; } catch(e) {}
+  const hash = window.location.hash.replace('#','').trim();
+
+  // Ny modell: kun lange tokens er gyldige
+  if (hash && hash.length >= 24) return hash;
+
+  try {
+    const s = sessionStorage.getItem('lastRoomCode');
+    if (s && s.length >= 24) return s;
+  } catch(e) {}
+
+  try {
+    const s = localStorage.getItem('lastRoomCode');
+    if (s && s.length >= 24) return s;
+  } catch(e) {}
+
   return null;
 }
 function clearRoomCode() {
@@ -529,7 +540,7 @@ async function createRoom() {
 }
 
 async function joinRoom() {
-  const token = window.location.hash.replace('#', '').trim();
+  const token =  window.location.hash.replace('#', '').trim() || document.getElementById('roomCodeInput').value.trim();
   
   if (!token) return;
 
