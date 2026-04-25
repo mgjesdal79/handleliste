@@ -529,8 +529,8 @@ async function createRoom() {
 }
 
 async function joinRoom() {
-  const token = document.getElementById('roomCodeInput').value.trim();
-
+  const token = window.location.hash.replace('#', '').trim();
+  
   if (!token) return;
 
   setSyncStatus('syncing');
