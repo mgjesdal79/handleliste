@@ -529,14 +529,27 @@ async function createRoom() {
 }
 
 async function joinRoom() {
-  const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
-  if (!code) return;
+  const token = document.getElementById('roomCodeInput').value.trim();
+
+  if (!token) return;
+
   setSyncStatus('syncing');
+
   try {
-    const rows = await sbFetch(`list_items?room_code=eq.${code}&select=*`);
-    if (!rows || !rows.length) { alert('Fant ikke rom: ' + code); setSyncStatus('error'); return; }
-    await enterRoom(code, rows[0]);
-  } catch(e) { setSyncStatus('error'); alert('Tilkoblingsfeil. Prøv igjen.'); }
+    const result = await api('load', token);
+
+    if (!result.data) {
+      alert('Fant ikke liste');
+      setSyncStatus('error');
+      return;
+    }
+
+    await enterRoom(token, result.data);
+
+  } catch (e) {
+    setSyncStatus('error');
+    alert('Tilkoblingsfeil. Prøv igjen.');
+  }
 }
 
 async function enterRoom(code, row = null) {
