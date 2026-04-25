@@ -633,15 +633,28 @@ function setSyncStatus(s) {
 
 async function saveToCloud() {
   if (!currentRoomCode) return;
-  isSaving = true; setSyncStatus('syncing');
+
+  isSaving = true;
+  setSyncStatus('syncing');
+
   try {
     const dataStr = JSON.stringify({ items: listItems });
-    const catStr  = JSON.stringify({ kiwi: kiwiSections, andre: andreSections });
-    await sbFetch(`list_items?room_code=eq.${currentRoomCode}`, 'PATCH', { data: dataStr, categories: catStr });
+    const catStr = JSON.stringify({ kiwi: kiwiSections, andre: andreSections });
+
+    const result = await api('save', currentRoomCode, {
+      data: dataStr,
+      categories: catStr
+    });
+
+    if (result.error) throw new Error(result.error);
+
     lastDataHash = dataStr + catStr;
     setSyncStatus('synced');
-  } catch(e) { setSyncStatus('error'); }
-  finally { isSaving = false; }
+  } catch (e) {
+    setSyncStatus('error');
+  } finally {
+    isSaving = false;
+  }
 }
 
 function scheduleSave() {
