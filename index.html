@@ -413,6 +413,19 @@
 const SUPABASE_URL = 'https://vkhktataxypuobrzslbi.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZraGt0YXRheHlwdW9icnpzbGJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MjM2MDIsImV4cCI6MjA4NzE5OTYwMn0.Hb-MT9Xss4s4lCTtpKJujs0eZsy-TMpw-xvSBF9j78E';
 
+async function api(action, token, payload = null) {
+  const res = await fetch(
+    "https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, token, payload }),
+    }
+  );
+
+  return res.json();
+}
+  
 async function sbFetch(path, method = 'GET', body = null) {
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
     method,
