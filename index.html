@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#f5f2ec">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
-<title>Handleliste v2.1</title>
+<title>Handleliste v2.2</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maple-mono@1.0.0/index.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap">
 <style>
@@ -278,8 +278,9 @@
 <div id="roomScreen" class="room-screen">
   <h1>🛒 Handleliste</h1>
   <p>Skriv inn rom-koden for å koble til.</p>
-  <input class="room-input" id="roomCodeInput" maxlength="6" placeholder="KODE" autocomplete="off" autocapitalize="characters" />
-  <button class="room-btn" onclick="joinRoom()">Koble til</button>
+  <input class="room-input" id="roomCodeInput" placeholder="Lim inn delt kode/lenke" autocomplete="off" autocapitalize="off" />
+  <button class="room-btn" onclick="joinRoom()">Koble til delt liste</button>
+  <button class="room-btn" onclick="createRoom()">Opprett ny handleliste</button>
 </div>
 
 <!-- MAIN APP -->
@@ -540,8 +541,11 @@ async function createRoom() {
 }
 
 async function joinRoom() {
-  const token =  window.location.hash.replace('#', '').trim() || document.getElementById('roomCodeInput').value.trim();
-  
+  let token =
+    window.location.hash.replace('#', '').trim() ||
+    document.getElementById('roomCodeInput').value.trim();
+
+if (token.includes('#')) token = token.split('#').pop().trim();  
   if (!token) return;
 
   setSyncStatus('syncing');
