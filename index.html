@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#f5f2ec">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
-<title>Handleliste v2.3</title>
+<title>Handleliste v2.4</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maple-mono@1.0.0/index.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap">
 <style>
@@ -823,10 +823,6 @@ function nyHandel() {
 
 // ── RENDER ──
 function guessSection(text, sections) {
-  const lower = text.toLowerCase();
-  for (const sec of sections) {
-    if (sec.keywords && sec.keywords.some(k => lower.includes(k))) return sec.id;
-  }
   return null;
 }
 
@@ -865,7 +861,8 @@ function renderGrocery(container) {
   const sections = {}, unknown = [], vogna = [];
   for (const item of listItems) {
     if (item.store === 'andre') continue;
-    const sectionId = item.kiwiSection || guessSection(item.text, kiwiSections);
+    const saved = getSavedPlacement(item.text);
+    const sectionId = item.kiwiSection || saved?.kiwiSection || null;
     const highlight = item.store === currentStore;
     if (item.checked) { vogna.push({ ...item, sectionId, highlight }); continue; }
     if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId, highlight }); }
@@ -982,7 +979,8 @@ function openItemDrawer(itemId, store) {
 
   const sections = store === 'andre' ? andreSections : kiwiSections;
   const curSection = store === 'andre' ? item.andreSection : item.kiwiSection;
-  const guessed = curSection || guessSection(item.text, sections);
+  const saved = getSavedPlacement(item.text);
+  const guessed = curSection || (store === 'andre' ? saved?.andreSection : saved?.kiwiSection) || null;
   document.getElementById('sectionOptions').innerHTML =
     (store !== 'andre' ? `<div style="font-family:'Maple Mono',monospace;font-weight:700;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:#6b5f52;margin-bottom:8px">Plassering i butikk</div>` : '') +
     sections.map((sec, i) => {
@@ -1008,7 +1006,8 @@ function assignItemSection(sectionId, store) {
   else item.kiwiSection = sectionId;
   
   rememberPlacement(item);
-  closeSectionModal(); scheduleSave();
+  closeSectionModal(); 
+  scheduleSave();
 }
 
 function closeSectionModal() {
