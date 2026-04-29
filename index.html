@@ -471,6 +471,7 @@ let kiwiSections = JSON.parse(JSON.stringify(defaultKiwiSections));
 let andreSections = JSON.parse(JSON.stringify(defaultAndreSections));
 // Items: [{ id, text, store, kiwiSection, andreSection, checked }]
 let listItems = [];
+let preferences = { itemPlacements: {} };
 let currentStore = 'kiwi';
 let currentRoomCode = null;
 let openPanel = null;
@@ -612,6 +613,15 @@ function loadFromRow(row) {
       if (cats.andre) andreSections.splice(0, andreSections.length, ...cats.andre);
     }
   } catch(e) {}
+  try {
+    preferences = row.preferences
+      ? (typeof row.preferences === 'string' ? JSON.parse(row.preferences) : row.preferences)
+      : { itemPlacements: {} };
+  
+    if (!preferences.itemPlacements) preferences.itemPlacements = {};
+  } catch(e) {
+    preferences = { itemPlacements: {} };
+  }
 }
 
 function showApp() {
@@ -658,9 +668,10 @@ async function saveToCloud() {
 
     const result = await api('save', currentRoomCode, {
       data: dataStr,
-      categories: catStr
+      categories: catStr,
+      preferences
     });
-
+    
     if (result.error) throw new Error(result.error);
 
     lastDataHash = dataStr + catStr;
@@ -784,14 +795,14 @@ function addItems() {
   const storeValue = addGroup === 'andre' ? 'andre' : addStore;
   const andreSection = addGroup === 'andre' ? addStore : null;
   raw.split('\n').map(l => l.trim()).filter(l => l.length > 0).forEach(line => {
-    listItems.push({
-      id: genId(),
-      text: line,
-      store: storeValue,
-      kiwiSection: null,
-      andreSection: andreSection,
-      checked: false
-    });
+  listItems.push({
+    id: genId(),
+    text: line,
+    store: storeValue,
+    kiwiSection: null,
+    andreSection: andreSection,
+    checked: false
+  });
   });
   textarea.value = '';
   renderList();
@@ -819,6 +830,24 @@ function guessSection(text, sections) {
   return null;
 }
 
+function normalizeItemName(text) {
+  return text.toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+function getSavedPlacement(text) {
+  return preferences.itemPlacements[normalizeItemName(text)] || null;
+}
+
+function rememberPlacement(item) {
+  const key = normalizeItemName(item.text);
+
+  preferences.itemPlacements[key] = {
+    store: item.store,
+    kiwiSection: item.kiwiSection || null,
+    andreSection: item.andreSection || null
+  };
+}
+  
 function renderList() {
   const container = document.getElementById('result');
   const bottomBar = document.getElementById('bottomBar');
@@ -865,7 +894,8 @@ function renderAndre(container) {
   const sections = {}, unknown = [], vogna = [];
   for (const item of listItems) {
     if (item.store !== 'andre') continue;
-    const sectionId = item.andreSection || guessSection(item.text, andreSections);
+    const saved = getSavedPlacement(item.text);
+    const sectionId = item.andreSection || saved?.andreSection || null;
     if (item.checked) { vogna.push({ ...item, sectionId }); continue; }
     if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId }); }
     else unknown.push({ ...item });
@@ -976,6 +1006,8 @@ function assignItemSection(sectionId, store) {
   if (!item) return;
   if (store === 'andre') item.andreSection = sectionId;
   else item.kiwiSection = sectionId;
+  
+  rememberPlacement(item);
   closeSectionModal(); scheduleSave();
 }
 
