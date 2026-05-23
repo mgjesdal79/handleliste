@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#f5f2ec">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
-<title>Handleliste v2.5.1 - Anledninger</title>
+<title>Handleliste v2.5.2 - N-fane</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maple-mono@1.0.0/index.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap">
 <style>
@@ -320,6 +320,17 @@
   .placement-row { display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid rgba(212,202,191,0.55); font-size:0.86rem; }
   .placement-row:last-child { border-bottom:none; }
   .placement-meta { color:var(--muted); font-size:0.75rem; }
+  .next-section-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin: 4px 0 10px; }
+  .next-section-title h2 { margin:0; font-family:'Maple Mono',monospace; font-size:1.08rem; letter-spacing:-0.02em; }
+  .card-heading-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .occasion-title-input, .context-title-input { flex:1; min-width:0; border:1px solid transparent; background:var(--bg); border-radius:8px; padding:9px 10px; color:var(--text); font-family:'Maple Mono',monospace; font-weight:800; font-size:1rem; outline:none; }
+  .occasion-title-input:focus, .context-title-input:focus { border-color:var(--kiwi); background:var(--surface); }
+  .card-actions { display:flex; gap:3px; flex-shrink:0; }
+  .card-summary { color:var(--muted); font-size:0.82rem; margin:0 0 8px; }
+  .linked-items { display:flex; flex-direction:column; gap:5px; margin-top:7px; }
+  .linked-item-row { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; padding:7px 9px; border:1px solid rgba(212,202,191,0.75); border-radius:8px; background:var(--bg); font-size:0.88rem; }
+  .linked-item-meta { color:var(--muted); font-size:0.72rem; font-family:'Maple Mono',monospace; text-transform:uppercase; letter-spacing:0.04em; }
+  .soft-divider { height:1px; background:var(--border); opacity:0.7; margin:14px 0; }
   @media (max-width: 760px) { .maintenance-only { display:none !important; } .meta-grid { grid-template-columns:1fr; } }
   .hidden { display: none !important; }
 </style>
@@ -375,8 +386,6 @@
         <button class="panel-tab active" data-tab="rom" onclick="switchTab('rom')">Rom</button>
         <button class="panel-tab" data-tab="kiwi-cats" onclick="switchTab('kiwi-cats')">Kiwi-kategorier</button>
         <button class="panel-tab" data-tab="andre-cats" onclick="switchTab('andre-cats')">Andre butikker</button>
-        <button class="panel-tab" data-tab="anledninger" onclick="switchTab('anledninger')">Anledninger</button>
-        <button class="panel-tab" data-tab="contexts" onclick="switchTab('contexts')">Kontekster</button>
         <button class="panel-tab" data-tab="maintenance" onclick="switchTab('maintenance')">Vedlikehold</button>
         <button class="panel-tab" data-tab="export" onclick="switchTab('export')">Eksporter</button>
         <button class="panel-tab" data-tab="import" onclick="switchTab('import')">Importer</button>
@@ -417,22 +426,6 @@
         </div>
       </div>
 
-      <div class="panel-section" id="tab-anledninger">
-        <div class="cat-list" id="occasionEditorList"></div>
-        <div class="cat-save-row">
-          <button class="cat-add-btn" onclick="addOccasionFromSettings()">+ Ny anledning</button>
-          <button class="cat-save-btn" onclick="saveOccasions()">Lagre</button>
-        </div>
-      </div>
-
-      <div class="panel-section" id="tab-contexts">
-        <p class="panel-help">Kontekster er &quot;neste gang jeg er...&quot;. De er ikke butikker, men situasjoner/steder som kan samle varer på tvers av butikker.</p>
-        <div class="cat-list" id="contextEditorList"></div>
-        <div class="cat-save-row">
-          <button class="cat-add-btn" onclick="addContextFromSettings()">+ Ny kontekst</button>
-          <button class="cat-save-btn" onclick="saveContexts()">Lagre</button>
-        </div>
-      </div>
 
       <div class="panel-section maintenance-only" id="tab-maintenance">
         <div id="maintenancePanel"></div>
@@ -834,11 +827,9 @@ function switchTab(tab) {
   document.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.panel-section').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
   const panel = document.getElementById('panel-settings');
-  panel.classList.toggle('tall', ['kiwi-cats','andre-cats','anledninger','contexts','maintenance'].includes(tab));
+  panel.classList.toggle('tall', ['kiwi-cats','andre-cats','maintenance'].includes(tab));
   if (tab === 'kiwi-cats') renderCatEditor('kiwi');
   if (tab === 'andre-cats') renderCatEditor('andre');
-  if (tab === 'anledninger') renderOccasionEditor();
-  if (tab === 'contexts') renderContextEditor();
   if (tab === 'maintenance') renderMaintenance();
 }
 function togglePanel(name) {
@@ -850,7 +841,7 @@ function togglePanel(name) {
   if (name === 'add') {
     if (currentStore === 'andre') { addGroup = 'andre'; addStore = (andreSections[0] && andreSections[0].id) || 'a0'; }
     else { addGroup = 'dagligvare'; addStore = ['kiwi','rema','meny'].includes(currentStore) ? currentStore : 'kiwi'; }
-    addOccasionId = currentOccasionFilter || null;
+    addOccasionId = currentStore === 'context' ? null : (currentOccasionFilter || null);
     renderAddPanel();
   }
 }
@@ -909,24 +900,34 @@ function renderContextOptions(selectedId, emptyLabel) {
 function renderOccasionFilterBar() {
   const bar = document.getElementById('occasionFilterBar');
   if (!bar) return;
+  const visible = currentStore !== 'context' && activeOccasions().length > 0;
+  bar.style.display = visible ? 'flex' : 'none';
+  if (!visible) { bar.innerHTML = ''; return; }
   let html = `<button class="filter-chip ${!currentOccasionFilter?'active':''}" onclick="setOccasionFilter(null)">Alle</button>`;
   activeOccasions().forEach(o => { html += `<button class="filter-chip ${currentOccasionFilter===o.id?'active':''}" onclick="setOccasionFilter('${h(o.id)}')">${h(o.name)}</button>`; });
-  html += `<button class="filter-chip add" onclick="createOccasionPrompt()">+ Anledning</button>`;
   bar.innerHTML = html;
 }
 function setOccasionFilter(id) { currentOccasionFilter = (id && currentOccasionFilter !== id) ? id : null; renderList(); }
-function createOccasionPrompt() {
-  const name = prompt('Navn på anledning, f.eks. 17. mai eller Jul');
-  if (!name || !name.trim()) return;
-  const o = { id: genId(), name: name.trim(), notes: '', sortOrder: occasions.length, archived: false, createdAt: nowIso() };
-  occasions.push(o);
-  currentOccasionFilter = o.id;
+function addOccasionFromNext() {
+  const input = document.getElementById('newOccasionName');
+  const name = input ? input.value.trim() : '';
+  if (!name) return;
+  occasions.push({ id: genId(), name, notes: '', sortOrder: occasions.length, archived: false, createdAt: nowIso() });
+  if (input) input.value = '';
+  renderList();
+  scheduleSave();
+}
+function updateOccasionName(id, value) {
+  const o = getOccasion(id);
+  if (!o) return;
+  o.name = value.trim() || o.name;
+  renderOccasionFilterBar();
   renderList();
   scheduleSave();
 }
 function addOccasionFromSettings() {
   occasions.push({ id: genId(), name: 'Ny anledning', notes: '', sortOrder: occasions.length, archived: false, createdAt: nowIso() });
-  renderOccasionEditor(); renderOccasionFilterBar(); scheduleSave();
+  renderList(); scheduleSave();
 }
 function renderOccasionEditor() {
   const el = document.getElementById('occasionEditorList');
@@ -944,7 +945,7 @@ function moveOccasion(id, dir) {
   const idx = sorted.findIndex(o => o.id === id), next = idx + dir;
   if (idx < 0 || next < 0 || next >= sorted.length) return;
   const moved = sorted.splice(idx, 1)[0]; sorted.splice(next, 0, moved); sorted.forEach((o, i) => o.sortOrder = i);
-  renderOccasionEditor(); renderOccasionFilterBar(); scheduleSave();
+  renderList(); scheduleSave();
 }
 function deleteOccasion(id) {
   const o = getOccasion(id);
@@ -953,7 +954,7 @@ function deleteOccasion(id) {
   occasionTodos = occasionTodos.filter(t => t.occasionId !== id);
   listItems.forEach(item => { if (item.occasionId === id) item.occasionId = null; });
   if (currentOccasionFilter === id) currentOccasionFilter = null;
-  renderOccasionEditor(); renderOccasionFilterBar(); renderList(); scheduleSave();
+  renderList(); scheduleSave();
 }
 function updateOccasionNotes(id, value) { const o = getOccasion(id); if (!o) return; o.notes = value; scheduleSave(); }
 function addOccasionTodo(occasionId) {
@@ -974,7 +975,23 @@ function moveOccasionTodo(id, dir) {
   const moved = group.splice(idx, 1)[0]; group.splice(next, 0, moved); group.forEach((x, i) => x.sortOrder = i);
   renderList(); scheduleSave();
 }
-function addContextFromSettings() { contexts.push({ id: genId(), name: 'Ny kontekst', sortOrder: contexts.length, archived: false, createdAt: nowIso() }); renderContextEditor(); scheduleSave(); }
+function addContextFromSettings() { contexts.push({ id: genId(), name: 'Ny kontekst', sortOrder: contexts.length, archived: false, createdAt: nowIso() }); renderList(); scheduleSave(); }
+function addContextFromNext() {
+  const input = document.getElementById('newContextName');
+  const name = input ? input.value.trim() : '';
+  if (!name) return;
+  contexts.push({ id: genId(), name, sortOrder: contexts.length, archived: false, createdAt: nowIso() });
+  if (input) input.value = '';
+  renderList();
+  scheduleSave();
+}
+function updateContextName(id, value) {
+  const c = getContext(id);
+  if (!c) return;
+  c.name = value.trim() || c.name;
+  renderList();
+  scheduleSave();
+}
 function renderContextEditor() {
   const el = document.getElementById('contextEditorList');
   if (!el) return;
@@ -988,14 +1005,14 @@ function moveContext(id, dir) {
   const idx = sorted.findIndex(c => c.id === id), next = idx + dir;
   if (idx < 0 || next < 0 || next >= sorted.length) return;
   const moved = sorted.splice(idx, 1)[0]; sorted.splice(next, 0, moved); sorted.forEach((c, i) => c.sortOrder = i);
-  renderContextEditor(); scheduleSave();
+  renderList(); scheduleSave();
 }
 function deleteContext(id) {
   const c = getContext(id);
   if (!c || !confirm('Slette konteksten? Varer kobles fra.')) return;
   contexts = contexts.filter(x => x.id !== id);
   listItems.forEach(item => { if (item.contextId === id) item.contextId = null; });
-  renderContextEditor(); renderList(); scheduleSave();
+  renderList(); scheduleSave();
 }
 
 // RENDERING
@@ -1005,9 +1022,13 @@ function rememberPlacement(item) {
   if (!key) return;
   preferences.itemPlacements[key] = { store: item.store, kiwiSection: item.kiwiSection || null, andreSection: item.andreSection || null, updatedAt: nowIso() };
 }
+function isInActiveShoppingScope(item) {
+  if (currentOccasionFilter) return !item.occasionId || item.occasionId === currentOccasionFilter;
+  return !item.occasionId;
+}
 function getScopedItems() {
-  if (currentOccasionFilter) return listItems.filter(item => item.occasionId === currentOccasionFilter);
-  return listItems.filter(item => !item.occasionId);
+  if (currentStore === 'context') return listItems;
+  return listItems.filter(isInActiveShoppingScope);
 }
 function renderList() {
   const start = performance.now();
@@ -1017,8 +1038,8 @@ function renderList() {
   const bottomBar = document.getElementById('bottomBar');
   if (!container) return;
   const scoped = getScopedItems();
-  bottomBar.style.display = scoped.some(i => i.checked) ? 'flex' : 'none';
-  if (currentStore === 'context') renderContextView(container, scoped);
+  bottomBar.style.display = currentStore !== 'context' && scoped.some(i => i.checked) ? 'flex' : 'none';
+  if (currentStore === 'context') renderNextView(container);
   else if (currentStore === 'andre') renderAndre(container, scoped);
   else renderGrocery(container, scoped);
   markPerf('Render', Math.round(performance.now() - start) + ' ms');
@@ -1026,7 +1047,7 @@ function renderList() {
 function hasOccasionItems(occasionId) { return listItems.some(i => i.occasionId === occasionId); }
 function primaryEmptyText() {
   return listItems.some(i => i.occasionId)
-    ? 'Ingen varer i primærlisten. Velg en anledning for å vise anledningsvarer.'
+    ? 'Ingen varer i primærlisten. Velg en anledning over for å toggle inn anledningsvarer.'
     : 'Trykk <strong>+</strong> for å legge til varer.';
 }
 function occasionEmptyText() {
@@ -1034,7 +1055,8 @@ function occasionEmptyText() {
 }
 function storeOccasionEmptyText() {
   if (currentOccasionFilter && !hasOccasionItems(currentOccasionFilter)) return occasionEmptyText();
-  return 'Ingen matvarer i denne butikkvisningen for anledningen.';
+  const o = getOccasion(currentOccasionFilter);
+  return 'Ingen primærvarer' + (o ? ' eller ' + h(o.name) + '-varer' : '') + ' i denne butikkvisningen.';
 }
 
 function renderOccasionHeader() {
@@ -1056,7 +1078,7 @@ function renderGrocery(container, items) {
     if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId, highlight }); }
     else unknown.push({ ...item, highlight });
   }
-  let html = renderOccasionHeader();
+  let html = '';
   let listHtml = '';
   kiwiSections.forEach((sec, i) => {
     const sectionItems = sections[sec.id]; if (!sectionItems || !sectionItems.length) return;
@@ -1081,7 +1103,7 @@ function renderAndre(container, items) {
     if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId }); }
     else unknown.push({ ...item });
   }
-  let html = renderOccasionHeader();
+  let html = '';
   let listHtml = '';
   andreSections.forEach(sec => {
     const sectionItems = sections[sec.id]; if (!sectionItems || !sectionItems.length) return;
@@ -1095,31 +1117,51 @@ function renderAndre(container, items) {
   container.innerHTML = html + listHtml;
   attachEvents();
 }
-function renderContextView(container, items) {
-  let html = renderOccasionHeader();
-  let listHtml = '';
-  activeContexts().forEach(ctx => {
-    const ctxItems = items.filter(i => i.contextId === ctx.id);
-    if (!ctxItems.length) return;
-    listHtml += `<div class="context-card"><h2>${h(ctx.name)}</h2>`;
-    ctxItems.forEach(item => listHtml += renderItem(item, item.store === 'andre' ? 'andre' : currentStore));
-    listHtml += '</div>';
-  });
-  if (!listHtml) {
-    const msg = currentOccasionFilter
-      ? (hasOccasionItems(currentOccasionFilter) ? 'Ingen varer i denne anledningen er knyttet til en kontekst ennå.<br>For å knytte en vare til en kontekst, rediger varen i handlelisten.' : occasionEmptyText())
-      : 'Ingen varer er knyttet til en kontekst ennå.<br>For å knytte en vare til en kontekst, rediger varen i handlelisten.';
-    listHtml = `<div class="empty-state"><div class="emoji">&#128205;</div><p>${msg}</p></div>`;
+function storeLabelForItem(item) {
+  if (item.store === 'kiwi') return 'Kiwi';
+  if (item.store === 'rema') return 'Rema';
+  if (item.store === 'meny') return 'Mega/Meny';
+  if (item.store === 'andre') {
+    const sec = andreSections.find(s => s.id === item.andreSection);
+    return sec ? sec.label : 'Andre';
   }
-  container.innerHTML = html + listHtml;
-  attachEvents();
+  return item.store || 'Ukjent';
+}
+function renderLinkedItems(items, emptyHtml) {
+  if (!items.length) return `<p class="panel-help">${emptyHtml}</p>`;
+  return `<div class="linked-items">${items.map(item => {
+    const ctx = item.contextId ? getContext(item.contextId) : null;
+    const checked = item.checked ? ' · i vogna' : '';
+    return `<div class="linked-item-row"><div><strong>${h(item.text)}</strong>${ctx ? `<div class="item-meta"><span class="item-pill">${h(ctx.name)}</span></div>` : ''}</div><div class="linked-item-meta">${h(storeLabelForItem(item))}${checked}</div></div>`;
+  }).join('')}</div>`;
+}
+function renderOccasionManagementCard(o) {
+  const todos = occasionTodos.filter(t => t.occasionId === o.id).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
+  const rows = todos.map(t => `<div class="todo-row ${t.checked?'done':''}"><button class="todo-check" onclick="toggleOccasionTodo('${h(t.id)}')"></button><span class="todo-text">${h(t.text)}</span><span class="todo-actions"><button class="tiny-btn" onclick="moveOccasionTodo('${h(t.id)}',-1)">▲</button><button class="tiny-btn" onclick="moveOccasionTodo('${h(t.id)}',1)">▼</button><button class="tiny-btn" onclick="deleteOccasionTodo('${h(t.id)}')">×</button></span></div>`).join('');
+  const items = listItems.filter(i => i.occasionId === o.id);
+  const itemHelp = 'Ingen varer er knyttet til denne anledningen ennå.<br>For å knytte en vare til en anledning, rediger varen i handlelisten.';
+  return `<div class="occasion-card"><div class="card-heading-row"><input class="occasion-title-input" value="${h(o.name)}" onchange="updateOccasionName('${h(o.id)}', this.value)" aria-label="Navn på anledning"><span class="card-actions"><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',-1)">▲</button><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',1)">▼</button><button class="tiny-btn" onclick="deleteOccasion('${h(o.id)}')">×</button></span></div><p class="card-summary">${items.length} varer · ${todos.length} todoer</p><label class="field-label">NOTATER</label><textarea class="occasion-note" placeholder="Notater for anledningen..." oninput="updateOccasionNotes('${h(o.id)}', this.value)">${h(o.notes || '')}</textarea><label class="field-label">TODO UTEN FRIST</label><div class="todo-add-row"><input class="text-input" id="newTodo-${h(o.id)}" placeholder="Ny todo..." onkeydown="if(event.key==='Enter'){addOccasionTodo('${h(o.id)}')}"><button class="small-btn" onclick="addOccasionTodo('${h(o.id)}')">Legg til</button></div>${rows || '<p class="panel-help">Ingen todoer her ennå.</p>'}<label class="field-label">VARER KNYTTET TIL ANLEDNINGEN</label>${renderLinkedItems(items, itemHelp)}</div>`;
+}
+function renderContextManagementCard(c) {
+  const items = listItems.filter(i => i.contextId === c.id);
+  const empty = 'Ingen varer er knyttet til denne konteksten ennå.<br>For å knytte en vare til en kontekst, rediger varen i handlelisten.';
+  return `<div class="context-card"><div class="card-heading-row"><input class="context-title-input" value="${h(c.name)}" onchange="updateContextName('${h(c.id)}', this.value)" aria-label="Navn på kontekst"><span class="card-actions"><button class="tiny-btn" onclick="moveContext('${h(c.id)}',-1)">▲</button><button class="tiny-btn" onclick="moveContext('${h(c.id)}',1)">▼</button><button class="tiny-btn" onclick="deleteContext('${h(c.id)}')">×</button></span></div><p class="card-summary">${items.length} varer</p>${renderLinkedItems(items, empty)}</div>`;
+}
+function renderNextView(container) {
+  const occs = activeOccasions();
+  const ctxs = activeContexts();
+  let html = `<div class="occasion-card"><div class="next-section-title"><h2>Anledninger</h2></div><p class="panel-help">Her oppretter og redigerer du anledninger, notater og todoer. I K/R/M/A kan du trykke på en anledning over listen for å toggle disse varene inn sammen med primærlisten.</p><div class="todo-add-row"><input class="text-input" id="newOccasionName" placeholder="Ny anledning, f.eks. Sommer" onkeydown="if(event.key==='Enter'){addOccasionFromNext()}"><button class="small-btn" onclick="addOccasionFromNext()">+ Ny</button></div></div>`;
+  html += occs.length ? occs.map(renderOccasionManagementCard).join('') : '<div class="empty-state"><p>Ingen anledninger ennå.</p></div>';
+  html += `<div class="soft-divider"></div><div class="context-card"><div class="next-section-title"><h2>Kontekster</h2></div><p class="panel-help">Kontekster er «neste gang jeg er ...». De kan samle varer på tvers av butikker, for eksempel Kvadrat, Clas Ohlson, Hjemme eller PC.</p><div class="todo-add-row"><input class="text-input" id="newContextName" placeholder="Ny kontekst, f.eks. Kvadrat" onkeydown="if(event.key==='Enter'){addContextFromNext()}"><button class="small-btn" onclick="addContextFromNext()">+ Ny</button></div></div>`;
+  html += ctxs.length ? ctxs.map(renderContextManagementCard).join('') : '<div class="empty-state"><p>Ingen kontekster ennå.</p></div>';
+  container.innerHTML = html;
 }
 function renderItem(item, store, inVogna = false) {
   const highlight = item.highlight && !inVogna ? 'highlighted' : '';
   const vognaClass = inVogna ? 'in-vogna' : '';
   const occ = item.occasionId ? getOccasion(item.occasionId) : null;
   const ctx = item.contextId ? getContext(item.contextId) : null;
-  const meta = `${occ && !currentOccasionFilter ? `<span class="item-pill">${h(occ.name)}</span>` : ''}${ctx ? `<span class="item-pill">${h(ctx.name)}</span>` : ''}`;
+  const meta = `${occ ? `<span class="item-pill">${h(occ.name)}</span>` : ''}${ctx ? `<span class="item-pill">${h(ctx.name)}</span>` : ''}`;
   const editBtn = !inVogna ? `<button class="edit-zone" aria-label="Rediger ${h(item.text)}" onclick="event.stopPropagation();openItemDrawer('${h(item.id)}')"><span class="edit-icon">✎</span></button>` : '';
   return `<div class="item-row ${highlight} ${vognaClass}" data-id="${h(item.id)}" data-store="${h(store)}"><div class="item-main"><div class="check-circle"></div><div class="item-content"><span class="item-name">${h(item.text)}</span>${meta ? `<div class="item-meta">${meta}</div>` : ''}</div>${editBtn}</div></div>`;
 }
@@ -1217,10 +1259,7 @@ function dragEnd(type) { dragSrcIdx = null; }
 
 // MAINTENANCE / EXPORT
 function toemVogna() {
-  listItems = listItems.filter(i => {
-    if (!i.checked) return true;
-    return currentOccasionFilter ? i.occasionId !== currentOccasionFilter : !!i.occasionId;
-  });
+  listItems = listItems.filter(i => !i.checked || !isInActiveShoppingScope(i));
   renderList(); scheduleSave();
 }
 function nyHandel() { document.getElementById('confirmModal').classList.remove('open'); listItems = []; renderList(); scheduleSave(); }
