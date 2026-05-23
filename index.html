@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#f5f2ec">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
-<title>Handleliste v2.4</title>
+<title>Handleliste v2.5 - Anledninger</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maple-mono@1.0.0/index.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap">
 <style>
@@ -269,6 +269,43 @@
   .add-store-btn.active[data-addstore="meny"]  { background: var(--meny);  border-color: var(--meny);  color: white; }
   .add-store-btn.active[data-addstore="andre"] { background: var(--andre); border-color: var(--andre); color: white; }
 
+
+  .store-btn.active[data-store="context"] { background: var(--text); border-color: var(--text); color: white; }
+  .filter-bar { max-width: 640px; margin: 0 auto; padding: 8px 16px 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-chip { padding: 6px 11px; border-radius: 100px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'Maple Mono', monospace; font-weight: 700; font-size: 0.72rem; white-space: nowrap; cursor: pointer; }
+  .filter-chip.active { background: var(--text); border-color: var(--text); color: white; }
+  .filter-chip.add { border-style: dashed; }
+  .panel-help { color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 12px; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 0; }
+  .field-label { display:block; font-family:'Maple Mono',monospace; font-weight:700; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin: 8px 0 5px; }
+  .text-input, .select-input { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.95rem; outline: none; }
+  .text-input:focus, .select-input:focus { border-color: var(--kiwi); }
+  .occasion-card, .context-card, .maintenance-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 8px 0 14px; }
+  .occasion-card h2, .context-card h2, .maintenance-card h2 { margin: 0 0 8px; font-family: 'Maple Mono', monospace; font-size: 1rem; letter-spacing: -0.02em; }
+  .occasion-note { min-height: 74px; margin-bottom: 10px; }
+  .todo-add-row { display:flex; gap: 8px; margin: 8px 0 10px; }
+  .todo-add-row input { flex: 1; }
+  .small-btn { border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 8px; padding: 7px 10px; font-family: 'Maple Mono', monospace; font-weight: 700; cursor: pointer; }
+  .todo-row { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid rgba(212,202,191,0.55); }
+  .todo-row:last-child { border-bottom:none; }
+  .todo-row.done .todo-text { color: var(--muted); text-decoration: line-through; }
+  .todo-check { width:22px; height:22px; border-radius:50%; border:2px solid var(--border); background:transparent; cursor:pointer; flex-shrink:0; }
+  .todo-row.done .todo-check { background: var(--muted); border-color: var(--muted); }
+  .todo-text { flex:1; font-size:0.92rem; }
+  .todo-actions { display:flex; gap:3px; }
+  .tiny-btn { border:none; background:transparent; color:var(--muted); cursor:pointer; font-size:0.75rem; padding:2px 4px; }
+  .item-meta { display:flex; gap:5px; flex-wrap:wrap; margin-top:2px; }
+  .item-pill { font-size:0.68rem; border:1px solid var(--border); color:var(--muted); border-radius:100px; padding:1px 6px; }
+  .item-content { display:flex; flex-direction:column; flex:1; min-width:0; }
+  .maintenance-grid { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
+  .metric { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:9px; }
+  .metric strong { display:block; font-size:1.05rem; }
+  .metric span { color:var(--muted); font-size:0.72rem; font-family:'Maple Mono',monospace; text-transform:uppercase; }
+  .placement-row { display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid rgba(212,202,191,0.55); font-size:0.86rem; }
+  .placement-row:last-child { border-bottom:none; }
+  .placement-meta { color:var(--muted); font-size:0.75rem; }
+  @media (max-width: 760px) { .maintenance-only { display:none !important; } .meta-grid { grid-template-columns:1fr; } }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -294,17 +331,21 @@
     </div>
     <div class="store-group">
       <button class="store-btn" data-store="andre">A</button>
+      <button class="store-btn" data-store="context">N</button>
     </div>
     <div class="sync-dot" id="syncDot"></div>
     <button class="icon-btn" onclick="togglePanel('add')">＋</button>
     <button class="icon-btn" onclick="togglePanel('settings')">⚙️</button>
   </div>
 
+  <div id="occasionFilterBar" class="filter-bar"></div>
+
   <!-- ADD PANEL -->
   <div class="slide-panel" id="panel-add">
     <div class="slide-panel-inner">
       <div id="addStoreSelectorInner"></div>
       <textarea id="addInput" placeholder="Én vare per linje..."></textarea>
+      <div id="addMetaSelectorInner"></div>
       <div class="panel-actions">
         <button class="action-btn primary" onclick="addItems()">Legg til</button>
         <button class="action-btn secondary" onclick="closePanel()">Avbryt</button>
@@ -319,6 +360,9 @@
         <button class="panel-tab active" data-tab="rom" onclick="switchTab('rom')">Rom</button>
         <button class="panel-tab" data-tab="kiwi-cats" onclick="switchTab('kiwi-cats')">Kiwi-kategorier</button>
         <button class="panel-tab" data-tab="andre-cats" onclick="switchTab('andre-cats')">Andre butikker</button>
+        <button class="panel-tab" data-tab="anledninger" onclick="switchTab('anledninger')">Anledninger</button>
+        <button class="panel-tab" data-tab="contexts" onclick="switchTab('contexts')">Kontekster</button>
+        <button class="panel-tab" data-tab="maintenance" onclick="switchTab('maintenance')">Vedlikehold</button>
         <button class="panel-tab" data-tab="export" onclick="switchTab('export')">Eksporter</button>
         <button class="panel-tab" data-tab="import" onclick="switchTab('import')">Importer</button>
       </div>
@@ -356,6 +400,27 @@
           <button class="cat-add-btn" onclick="addCat('andre')">+ Ny butikk</button>
           <button class="cat-save-btn" onclick="saveCats('andre')">Lagre</button>
         </div>
+      </div>
+
+      <div class="panel-section" id="tab-anledninger">
+        <div class="cat-list" id="occasionEditorList"></div>
+        <div class="cat-save-row">
+          <button class="cat-add-btn" onclick="addOccasionFromSettings()">+ Ny anledning</button>
+          <button class="cat-save-btn" onclick="saveOccasions()">Lagre</button>
+        </div>
+      </div>
+
+      <div class="panel-section" id="tab-contexts">
+        <p class="panel-help">Kontekster er &quot;neste gang jeg er...&quot;. De er ikke butikker, men situasjoner/steder som kan samle varer paa tvers av butikker.</p>
+        <div class="cat-list" id="contextEditorList"></div>
+        <div class="cat-save-row">
+          <button class="cat-add-btn" onclick="addContextFromSettings()">+ Ny kontekst</button>
+          <button class="cat-save-btn" onclick="saveContexts()">Lagre</button>
+        </div>
+      </div>
+
+      <div class="panel-section maintenance-only" id="tab-maintenance">
+        <div id="maintenancePanel"></div>
       </div>
 
       <div class="panel-section" id="tab-export">
@@ -398,51 +463,40 @@
 <!-- STORE PICKER MODAL (kept for legacy, hidden) -->
 <div id="storeModal" style="display:none"></div>
 
-<!-- SECTION PICKER MODAL (now includes store selector for grocery) -->
+<!-- SECTION PICKER / ITEM EDITOR MODAL -->
 <div class="modal-backdrop" id="sectionModal" onclick="handleModalBackdrop(event,'sectionModal')">
   <div class="modal">
     <div class="modal-title" id="sectionModalTitle">Rediger vare</div>
-    <div class="modal-subtitle" id="sectionModalItem"></div>
+    <label class="field-label" for="itemNameInput">Navn</label>
+    <input class="text-input" id="itemNameInput" autocomplete="off" />
+    <div id="itemMetaSection"></div>
     <div id="storePickerSection" style="margin-bottom:16px"></div>
     <div id="sectionOptions"></div>
-    <button class="modal-cancel" onclick="closeSectionModal()">Avbryt</button>
+    <div class="panel-actions">
+      <button class="action-btn primary" onclick="saveItemDetails()">Lagre</button>
+      <button class="action-btn secondary" onclick="closeSectionModal()">Avbryt</button>
+    </div>
   </div>
 </div>
 
 <script>
-// ── CONFIG ──
-const SUPABASE_URL = 'https://vkhktataxypuobrzslbi.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZraGt0YXRheHlwdW9icnpzbGJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MjM2MDIsImV4cCI6MjA4NzE5OTYwMn0.Hb-MT9Xss4s4lCTtpKJujs0eZsy-TMpw-xvSBF9j78E';
+// CONFIG
+const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 
 async function api(action, token, payload = null) {
-  const res = await fetch(
-    "https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, token, payload }),
-    }
-  );
-
-  return res.json();
-}
-  
-async function sbFetch(path, method = 'GET', body = null) {
-  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-    method,
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': method === 'PATCH' ? 'return=minimal' : method === 'POST' ? 'return=representation' : ''
-    },
-    body: body ? JSON.stringify(body) : null
+  const res = await fetch(EDGE_FUNCTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, token, payload })
   });
-  if (!res.ok) { const e = await res.text(); throw new Error(e); }
-  const t = await res.text(); return t ? JSON.parse(t) : null;
+  const text = await res.text();
+  let json = {};
+  try { json = text ? JSON.parse(text) : {}; } catch (e) { json = { error: text || 'Ugyldig svar fra server' }; }
+  if (!res.ok && !json.error) json.error = 'HTTP ' + res.status;
+  return json;
 }
 
-// ── DEFAULT DATA ──
+// DEFAULT DATA
 const defaultKiwiSections = [
   { id: 'k0',  label: 'Småbrus',              keywords: ['brus','cola','pepsi','fanta','soda','mineralvann','juice','smoothie','saft'] },
   { id: 'k1',  label: 'Frukt og grønt',        keywords: ['frukt','grønt','eple','banan','appelsin','tomat','agurk','løk','hvitløk','salat','paprika','gulrot','sitron','lime','jordbær','blåbær','mango','avokado','spinat','brokkoli','blomkål','squash','sopp','purre','selleri'] },
@@ -466,23 +520,59 @@ const defaultAndreSections = [
   { id: 'a3', label: 'Ikea',      keywords: [] },
 ];
 
-// ── STATE ──
+// STATE
 let kiwiSections = JSON.parse(JSON.stringify(defaultKiwiSections));
 let andreSections = JSON.parse(JSON.stringify(defaultAndreSections));
-// Items: [{ id, text, store, kiwiSection, andreSection, checked }]
 let listItems = [];
+let occasions = [];
+let occasionTodos = [];
+let contexts = [];
 let preferences = { itemPlacements: {} };
 let currentStore = 'kiwi';
+let currentOccasionFilter = null;
 let currentRoomCode = null;
 let openPanel = null;
 let saveTimeout = null;
 let pollInterval = null;
 let isSaving = false;
+let localDirtySinceLoad = false;
 let lastDataHash = null;
+let activeItemId = null;
+let addGroup = 'dagligvare';
+let addStore = 'kiwi';
+let addOccasionId = null;
+let addContextId = null;
+let placementSearch = '';
+let perfLog = [];
+let collapsedSections = new Set();
+let dragSrcIdx = null;
 
-function genId() { return Math.random().toString(36).slice(2,10); }
+function genId() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+}
+function nowIso() { return new Date().toISOString(); }
+function h(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+function parseMaybeJson(value, fallback) {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'string') { try { return JSON.parse(value); } catch (e) { return fallback; } }
+  if (typeof value === 'object') return value;
+  return fallback;
+}
+function normalizeItemName(text) { return String(text || '').toLowerCase().trim().replace(/\s+/g, ' '); }
+function bytesOf(str) { return new Blob([String(str || '')]).size; }
+function markPerf(label, extra = '') {
+  perfLog.unshift({ at: new Date().toLocaleTimeString('no-NO'), label, extra });
+  perfLog = perfLog.slice(0, 40);
+}
+function getOccasion(id) { return occasions.find(o => o.id === id) || null; }
+function getContext(id) { return contexts.find(c => c.id === id) || null; }
+function activeOccasions() { return occasions.filter(o => !o.archived).sort((a,b)=>(a.sortOrder || 0) - (b.sortOrder || 0)); }
+function activeContexts() { return contexts.filter(c => !c.archived).sort((a,b)=>(a.sortOrder || 0) - (b.sortOrder || 0)); }
 
-// ── ROOM CODE STORAGE ──
+// ROOM CODE STORAGE
 function saveRoomCode(code) {
   try { localStorage.setItem('lastRoomCode', code); } catch(e) {}
   try { sessionStorage.setItem('lastRoomCode', code); } catch(e) {}
@@ -490,20 +580,9 @@ function saveRoomCode(code) {
 }
 function getSavedRoomCode() {
   const hash = window.location.hash.replace('#','').trim();
-
-  // Ny modell: kun lange tokens er gyldige
   if (hash && hash.length >= 24) return hash;
-
-  try {
-    const s = sessionStorage.getItem('lastRoomCode');
-    if (s && s.length >= 24) return s;
-  } catch(e) {}
-
-  try {
-    const s = localStorage.getItem('lastRoomCode');
-    if (s && s.length >= 24) return s;
-  } catch(e) {}
-
+  try { const s = sessionStorage.getItem('lastRoomCode'); if (s && s.length >= 24) return s; } catch(e) {}
+  try { const s = localStorage.getItem('lastRoomCode'); if (s && s.length >= 24) return s; } catch(e) {}
   return null;
 }
 function clearRoomCode() {
@@ -511,355 +590,432 @@ function clearRoomCode() {
   try { sessionStorage.removeItem('lastRoomCode'); } catch(e) {}
   history.replaceState(null, '', window.location.pathname);
 }
+function cacheKey(code) { return 'handleliste.cache.' + String(code || '').slice(0, 32); }
+function rowFromState() {
+  return {
+    data: JSON.stringify({ items: listItems, occasions, occasionTodos, contexts }),
+    categories: JSON.stringify({ kiwi: kiwiSections, andre: andreSections }),
+    preferences
+  };
+}
+function saveRoomCache(row = null) {
+  if (!currentRoomCode) return;
+  try { localStorage.setItem(cacheKey(currentRoomCode), JSON.stringify(row || rowFromState())); } catch(e) {}
+}
+function loadRoomCache(code) {
+  try { const raw = localStorage.getItem(cacheKey(code)); return raw ? JSON.parse(raw) : null; } catch(e) { return null; }
+}
+function getRowHash(row) {
+  return JSON.stringify(parseMaybeJson(row?.data, {})) + JSON.stringify(parseMaybeJson(row?.categories, {})) + JSON.stringify(parseMaybeJson(row?.preferences, {}));
+}
+function getLocalHash() {
+  return JSON.stringify({ items: listItems, occasions, occasionTodos, contexts }) + JSON.stringify({ kiwi: kiwiSections, andre: andreSections }) + JSON.stringify(preferences || {});
+}
 
-// ── SUPABASE ──
+function normalizeState() {
+  if (!Array.isArray(listItems)) listItems = [];
+  if (!Array.isArray(occasions)) occasions = [];
+  if (!Array.isArray(occasionTodos)) occasionTodos = [];
+  if (!Array.isArray(contexts)) contexts = [];
+  listItems.forEach(item => {
+    if (!item.id) item.id = genId();
+    if (typeof item.text !== 'string') item.text = String(item.text || '');
+    if (!item.store) item.store = 'kiwi';
+    if (typeof item.checked !== 'boolean') item.checked = !!item.checked;
+    if (!('occasionId' in item)) item.occasionId = null;
+    if (!('contextId' in item)) item.contextId = null;
+  });
+  occasions.forEach((o, i) => {
+    if (!o.id) o.id = genId();
+    if (!o.name) o.name = 'Anledning ' + (i + 1);
+    if (!('notes' in o)) o.notes = '';
+    if (!('sortOrder' in o)) o.sortOrder = i;
+    if (!('archived' in o)) o.archived = false;
+  });
+  occasionTodos.forEach((t, i) => {
+    if (!t.id) t.id = genId();
+    if (!t.text) t.text = '';
+    if (!('checked' in t)) t.checked = false;
+    if (!('sortOrder' in t)) t.sortOrder = i;
+    if (!('contextId' in t)) t.contextId = null;
+  });
+  contexts.forEach((c, i) => {
+    if (!c.id) c.id = genId();
+    if (!c.name) c.name = 'Kontekst ' + (i + 1);
+    if (!('sortOrder' in c)) c.sortOrder = i;
+    if (!('archived' in c)) c.archived = false;
+  });
+  if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
+  if (!preferences.itemPlacements || typeof preferences.itemPlacements !== 'object') preferences.itemPlacements = {};
+  if (currentOccasionFilter && !getOccasion(currentOccasionFilter)) currentOccasionFilter = null;
+}
+
+// SUPABASE EDGE FUNCTION FLOW
 async function createRoom() {
-  if (currentRoomCode && !confirm('Lag et nytt rom? Du mister tilgang til det nåværende.')) return;
-
+  if (currentRoomCode && !confirm('Lag et nytt rom? Du mister tilgang til det naa-vaerende.')) return;
   const tokenBytes = new Uint8Array(32);
   crypto.getRandomValues(tokenBytes);
-  const token = Array.from(tokenBytes)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-
+  const token = Array.from(tokenBytes).map(b => b.toString(16).padStart(2, '0')).join('');
   setSyncStatus('syncing');
-
   try {
-    const result = await api('create', token, {
-      categories: { kiwi: defaultKiwiSections, andre: defaultAndreSections }
-    });
-
+    const result = await api('create', token, { categories: { kiwi: defaultKiwiSections, andre: defaultAndreSections } });
     if (result.error) throw new Error(result.error);
-
     await enterRoom(token, result.data);
-
     navigator.clipboard.writeText(location.href).catch(() => {});
     alert('Ny handleliste opprettet. Lenken er kopiert til utklippstavlen.');
-  } catch (e) {
-    setSyncStatus('error');
-    alert('Feil: ' + e.message);
-  }
+  } catch (e) { setSyncStatus('error'); alert('Feil: ' + e.message); }
 }
-
 async function joinRoom() {
-  let token =
-    window.location.hash.replace('#', '').trim() ||
-    document.getElementById('roomCodeInput').value.trim();
-
-if (token.includes('#')) token = token.split('#').pop().trim();  
+  let token = window.location.hash.replace('#', '').trim() || document.getElementById('roomCodeInput').value.trim();
+  if (token.includes('#')) token = token.split('#').pop().trim();
   if (!token) return;
-
+  currentRoomCode = token;
+  saveRoomCode(token);
   setSyncStatus('syncing');
-
+  const cached = loadRoomCache(token);
+  let shownFromCache = false;
+  if (cached) {
+    loadFromRow(cached);
+    showApp();
+    startPolling();
+    shownFromCache = true;
+    markPerf('Viste lokal cache');
+  }
   try {
+    const start = performance.now();
     const result = await api('load', token);
-
+    markPerf('Server-load', Math.round(performance.now() - start) + ' ms');
     if (!result.data) {
-      alert('Fant ikke liste');
-      setSyncStatus('error');
+      if (!shownFromCache) { alert('Fant ikke liste'); setSyncStatus('error'); }
       return;
     }
-
+    if (shownFromCache && localDirtySinceLoad) { await saveToCloud(); return; }
     await enterRoom(token, result.data);
-
   } catch (e) {
+    if (!shownFromCache) alert('Tilkoblingsfeil. Proev igjen.');
     setSyncStatus('error');
-    alert('Tilkoblingsfeil. Prøv igjen.');
   }
 }
-
 async function enterRoom(code, row = null) {
   currentRoomCode = code;
   saveRoomCode(code);
   if (!row) {
-    const rows = await sbFetch(`list_items?room_code=eq.${code}&select=*`);
-    row = rows && rows[0];
+    const result = await api('load', code);
+    if (result.error) throw new Error(result.error);
+    row = result.data;
   }
   if (row) loadFromRow(row);
   showApp();
   startPolling();
 }
-
 function loadFromRow(row) {
-  try {
-    const d = JSON.parse(row.data || '{}');
-    if (d.items && d.items.length && d.items[0].id) {
-      // New ID-based format
-      listItems = d.items;
-    } else if (d.items) {
-      // Migrate old format: items + storeData + checkedItems
-      const storeData = d.storeData || {};
-      const checkedItems = d.checkedItems || {};
-      listItems = d.items.map(item => {
-        const key = item.text.toLowerCase().trim();
-        const sd = storeData[key] || {};
-        let store = sd.store || (sd.stores && sd.stores[0]) || 'kiwi';
-        if (sd.stores && sd.stores.includes('andre')) store = 'andre';
-        return {
-          id: genId(),
-          text: item.text,
-          store,
-          kiwiSection: sd.kiwiSection || null,
-          andreSection: sd.andreSection || null,
-          checked: checkedItems[key] || false
-        };
-      });
-    }
-  } catch(e) { listItems = []; }
-  try {
-    const cats = JSON.parse(row.categories || 'null');
-    if (cats) {
-      if (cats.kiwi) kiwiSections.splice(0, kiwiSections.length, ...cats.kiwi);
-      if (cats.andre) andreSections.splice(0, andreSections.length, ...cats.andre);
-    }
-  } catch(e) {}
-  try {
-    preferences = row.preferences
-      ? (typeof row.preferences === 'string' ? JSON.parse(row.preferences) : row.preferences)
-      : { itemPlacements: {} };
-  
-    if (!preferences.itemPlacements) preferences.itemPlacements = {};
-  } catch(e) {
-    preferences = { itemPlacements: {} };
+  const d = parseMaybeJson(row?.data, {});
+  if (d.items && d.items.length && d.items[0].id) {
+    listItems = d.items;
+  } else if (d.items) {
+    const storeData = d.storeData || {};
+    const checkedItems = d.checkedItems || {};
+    listItems = d.items.map(item => {
+      const key = String(item.text || '').toLowerCase().trim();
+      const sd = storeData[key] || {};
+      let store = sd.store || (sd.stores && sd.stores[0]) || 'kiwi';
+      if (sd.stores && sd.stores.includes('andre')) store = 'andre';
+      return { id: genId(), text: item.text, store, kiwiSection: sd.kiwiSection || null, andreSection: sd.andreSection || null, checked: checkedItems[key] || false, occasionId: null, contextId: null };
+    });
+  } else listItems = [];
+  occasions = Array.isArray(d.occasions) ? d.occasions : [];
+  occasionTodos = Array.isArray(d.occasionTodos) ? d.occasionTodos : [];
+  contexts = Array.isArray(d.contexts) ? d.contexts : [];
+  const cats = parseMaybeJson(row?.categories, null);
+  if (cats) {
+    if (Array.isArray(cats.kiwi)) kiwiSections.splice(0, kiwiSections.length, ...cats.kiwi);
+    if (Array.isArray(cats.andre)) andreSections.splice(0, andreSections.length, ...cats.andre);
   }
+  preferences = parseMaybeJson(row?.preferences, { itemPlacements: {} });
+  normalizeState();
+  lastDataHash = getRowHash(row);
+  localDirtySinceLoad = false;
+  saveRoomCache(rowFromState());
+  markPerf('Parse/cache', bytesOf(JSON.stringify(rowFromState())) + ' bytes');
 }
-
 function showApp() {
   document.getElementById('roomScreen').classList.add('hidden');
   document.getElementById('mainApp').classList.remove('hidden');
-  document.getElementById('displayRoomCode').textContent = currentRoomCode;
+  const display = document.getElementById('displayRoomCode');
+  if (display) display.textContent = currentRoomCode;
+  updateStoreButtons();
   setSyncStatus('synced');
   renderList();
 }
-
 function leaveRoom() {
   clearInterval(pollInterval);
   currentRoomCode = null;
   clearRoomCode();
-  listItems = [];
+  listItems = []; occasions = []; occasionTodos = []; contexts = [];
   document.getElementById('mainApp').classList.add('hidden');
   document.getElementById('roomScreen').classList.remove('hidden');
   document.getElementById('roomCodeInput').value = '';
   closePanel();
 }
-
 function copyRoomCode() {
   navigator.clipboard.writeText(currentRoomCode).catch(()=>{});
   const btn = document.querySelector('#tab-rom .settings-link');
-  btn.textContent = '✓ Kopiert!';
-  setTimeout(() => btn.textContent = 'Kopier rom-kode', 2000);
+  if (!btn) return;
+  const old = btn.textContent;
+  btn.textContent = 'Kopiert';
+  setTimeout(() => btn.textContent = old, 2000);
 }
-
-// ── SYNC ──
 function setSyncStatus(s) {
   const d = document.getElementById('syncDot');
   if (d) d.className = 'sync-dot ' + s;
 }
-
 async function saveToCloud() {
   if (!currentRoomCode) return;
-
   isSaving = true;
   setSyncStatus('syncing');
-
   try {
-    const dataStr = JSON.stringify({ items: listItems });
+    normalizeState();
+    const dataStr = JSON.stringify({ items: listItems, occasions, occasionTodos, contexts });
     const catStr = JSON.stringify({ kiwi: kiwiSections, andre: andreSections });
-
-    const result = await api('save', currentRoomCode, {
-      data: dataStr,
-      categories: catStr,
-      preferences
-    });
-    
+    const prefStr = JSON.stringify(preferences || {});
+    const result = await api('save', currentRoomCode, { data: dataStr, categories: catStr, preferences });
     if (result.error) throw new Error(result.error);
-
-    lastDataHash = dataStr + catStr;
+    lastDataHash = dataStr + catStr + prefStr;
+    localDirtySinceLoad = false;
+    saveRoomCache({ data: dataStr, categories: catStr, preferences });
     setSyncStatus('synced');
-  } catch (e) {
-    setSyncStatus('error');
-  } finally {
-    isSaving = false;
-  }
+  } catch (e) { setSyncStatus('error'); }
+  finally { isSaving = false; }
 }
-
 function scheduleSave() {
+  normalizeState();
+  localDirtySinceLoad = true;
+  saveRoomCache(rowFromState());
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(async () => { await saveToCloud(); saveTimeout = null; }, 600);
 }
-
 async function pollCloud() {
   if (!currentRoomCode || isSaving || saveTimeout) return;
-
   try {
     const result = await api('load', currentRoomCode);
-
     if (!result.data) return;
-
-    const hash = result.data.data + (result.data.categories || '');
-
+    const hash = getRowHash(result.data);
     if (hash !== lastDataHash) {
       lastDataHash = hash;
       loadFromRow(result.data);
       renderList();
       setSyncStatus('synced');
     }
-  } catch (e) {
-    setSyncStatus('error');
-  }
+  } catch (e) { setSyncStatus('error'); }
 }
-  
 function startPolling() { clearInterval(pollInterval); pollInterval = setInterval(pollCloud, 5000); }
 
-// ── PANEL ──
-let dragSrcIdx = null;
+// PANELS AND TABS
 function closePanel() {
-  if (openPanel) document.getElementById('panel-'+openPanel).classList.remove('open');
+  if (openPanel) document.getElementById('panel-' + openPanel).classList.remove('open');
   openPanel = null;
 }
 function switchTab(tab) {
   document.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-  document.querySelectorAll('.panel-section').forEach(s => s.classList.toggle('active', s.id === 'tab-'+tab));
+  document.querySelectorAll('.panel-section').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
   const panel = document.getElementById('panel-settings');
-  const tall = tab === 'kiwi-cats' || tab === 'andre-cats';
-  panel.classList.toggle('tall', tall);
+  panel.classList.toggle('tall', ['kiwi-cats','andre-cats','anledninger','contexts','maintenance'].includes(tab));
   if (tab === 'kiwi-cats') renderCatEditor('kiwi');
   if (tab === 'andre-cats') renderCatEditor('andre');
+  if (tab === 'anledninger') renderOccasionEditor();
+  if (tab === 'contexts') renderContextEditor();
+  if (tab === 'maintenance') renderMaintenance();
 }
-
-// Store buttons
+function togglePanel(name) {
+  if (openPanel === name) { closePanel(); return; }
+  ['add','settings'].forEach(p => document.getElementById('panel-' + p).classList.remove('open'));
+  openPanel = name;
+  document.getElementById('panel-' + name).classList.add('open');
+  if (name === 'settings') switchTab('rom');
+  if (name === 'add') {
+    if (currentStore === 'andre') { addGroup = 'andre'; addStore = (andreSections[0] && andreSections[0].id) || 'a0'; }
+    else { addGroup = 'dagligvare'; addStore = ['kiwi','rema','meny'].includes(currentStore) ? currentStore : 'kiwi'; }
+    addOccasionId = currentOccasionFilter || null;
+    renderAddPanel();
+  }
+}
+function updateStoreButtons() {
+  document.querySelectorAll('.store-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.store === currentStore));
+}
 document.querySelectorAll('.store-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.store-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentStore = btn.dataset.store;
-    renderList();
-  });
+  btn.addEventListener('click', () => { currentStore = btn.dataset.store; updateStoreButtons(); renderList(); });
 });
 
-// ── ADD PANEL STATE ──
-let addGroup = 'dagligvare';
-let addStore = 'kiwi';
-
+// ADD PANEL
 function renderAddPanel() {
   const el = document.getElementById('addStoreSelectorInner');
+  const meta = document.getElementById('addMetaSelectorInner');
   if (!el) return;
   const secs = andreSections.length ? andreSections : defaultAndreSections;
   const stores = addGroup === 'dagligvare'
     ? [{id:'kiwi',label:'Kiwi',color:'#2d8a3e'},{id:'rema',label:'Rema',color:'#003087'},{id:'meny',label:'Mega/Meny',color:'#d46000'}]
     : secs.map(s => ({id:s.id,label:s.label,color:'#7c5cbf'}));
-  el.innerHTML = `
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+  el.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
       ${['dagligvare','andre'].map(g => `<button onclick="selectAddGroup('${g}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addGroup===g?'#1a1814':'#e0d9ce'};background:${addGroup===g?'#1a1814':'transparent'};color:${addGroup===g?'white':'#8a8070'};font-family:'Maple Mono',monospace;font-weight:600;font-size:0.8rem;cursor:pointer;">${g==='dagligvare'?'Dagligvare':'Andre butikker'}</button>`).join('')}
-    </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-      ${stores.map(s => `<button onclick="selectAddStore('${s.id}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addStore===s.id?s.color:'#e0d9ce'};background:${addStore===s.id?s.color:'transparent'};color:${addStore===s.id?'white':'#8a8070'};font-family:'Maple Mono',monospace;font-weight:600;font-size:0.8rem;cursor:pointer;">${s.label}</button>`).join('')}
+    </div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      ${stores.map(s => `<button onclick="selectAddStore('${s.id}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addStore===s.id?s.color:'#e0d9ce'};background:${addStore===s.id?s.color:'transparent'};color:${addStore===s.id?'white':'#8a8070'};font-family:'Maple Mono',monospace;font-weight:600;font-size:0.8rem;cursor:pointer;">${h(s.label)}</button>`).join('')}
     </div>`;
+  if (meta) meta.innerHTML = `<div class="meta-grid"><label><span class="field-label">Anledning</span><select class="select-input" onchange="addOccasionId=this.value||null">${renderOccasionOptions(addOccasionId, 'Ingen anledning')}</select></label><label><span class="field-label">Kontekst</span><select class="select-input" onchange="addContextId=this.value||null">${renderContextOptions(addContextId, 'Ingen kontekst')}</select></label></div>`;
 }
-
 function selectAddGroup(group) {
   addGroup = group;
   if (group === 'dagligvare') { if (!['kiwi','rema','meny'].includes(addStore)) addStore = 'kiwi'; }
-  else { const secs = andreSections.length ? andreSections : defaultAndreSections; addStore = secs[0].id; }
+  else addStore = (andreSections[0] && andreSections[0].id) || 'a0';
   renderAddPanel();
 }
-
-function selectAddStore(store) {
-  addStore = store;
-  renderAddPanel();
-}
-
-function togglePanel(name) {
-  if (openPanel === name) { closePanel(); return; }
-  ['add','settings'].forEach(p => document.getElementById('panel-'+p).classList.remove('open'));
-  openPanel = name;
-  document.getElementById('panel-'+name).classList.add('open');
-  if (name === 'settings') switchTab('rom');
-  if (name === 'add') {
-    // Context-aware: match current store view
-    if (currentStore === 'andre') {
-      addGroup = 'andre';
-      const secs = andreSections.length ? andreSections : defaultAndreSections;
-      addStore = secs[0].id;
-    } else {
-      addGroup = 'dagligvare';
-      addStore = currentStore; // kiwi, rema, or meny
-    }
-    renderAddPanel();
-  }
-}
+function selectAddStore(store) { addStore = store; renderAddPanel(); }
 function addItems() {
   const textarea = document.getElementById('addInput');
   const raw = textarea.value.trim();
   if (!raw) { closePanel(); return; }
   const storeValue = addGroup === 'andre' ? 'andre' : addStore;
   const andreSection = addGroup === 'andre' ? addStore : null;
-  raw.split('\n').map(l => l.trim()).filter(l => l.length > 0).forEach(line => {
-  listItems.push({
-    id: genId(),
-    text: line,
-    store: storeValue,
-    kiwiSection: null,
-    andreSection: andreSection,
-    checked: false
-  });
+  raw.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
+    listItems.push({ id: genId(), text: line, store: storeValue, kiwiSection: null, andreSection, checked: false, occasionId: addOccasionId || null, contextId: addContextId || null, createdAt: nowIso() });
   });
   textarea.value = '';
-  renderList();
   closePanel();
+  renderList();
   scheduleSave();
 }
 
-function toemVogna() {
-  listItems = listItems.filter(i => !i.checked);
+// OCCASIONS AND CONTEXTS
+function renderOccasionOptions(selectedId, emptyLabel) {
+  return `<option value="">${h(emptyLabel)}</option>` + activeOccasions().map(o => `<option value="${h(o.id)}" ${o.id===selectedId?'selected':''}>${h(o.name)}</option>`).join('');
+}
+function renderContextOptions(selectedId, emptyLabel) {
+  return `<option value="">${h(emptyLabel)}</option>` + activeContexts().map(c => `<option value="${h(c.id)}" ${c.id===selectedId?'selected':''}>${h(c.name)}</option>`).join('');
+}
+function renderOccasionFilterBar() {
+  const bar = document.getElementById('occasionFilterBar');
+  if (!bar) return;
+  let html = `<button class="filter-chip ${!currentOccasionFilter?'active':''}" onclick="setOccasionFilter(null)">Alle</button>`;
+  activeOccasions().forEach(o => { html += `<button class="filter-chip ${currentOccasionFilter===o.id?'active':''}" onclick="setOccasionFilter('${h(o.id)}')">${h(o.name)}</button>`; });
+  html += `<button class="filter-chip add" onclick="createOccasionPrompt()">+ Anledning</button>`;
+  bar.innerHTML = html;
+}
+function setOccasionFilter(id) { currentOccasionFilter = id || null; renderList(); }
+function createOccasionPrompt() {
+  const name = prompt('Navn paa anledning, f.eks. 17. mai eller Jul');
+  if (!name || !name.trim()) return;
+  const o = { id: genId(), name: name.trim(), notes: '', sortOrder: occasions.length, archived: false, createdAt: nowIso() };
+  occasions.push(o);
+  currentOccasionFilter = o.id;
+  renderList();
+  scheduleSave();
+}
+function addOccasionFromSettings() {
+  occasions.push({ id: genId(), name: 'Ny anledning', notes: '', sortOrder: occasions.length, archived: false, createdAt: nowIso() });
+  renderOccasionEditor(); renderOccasionFilterBar(); scheduleSave();
+}
+function renderOccasionEditor() {
+  const el = document.getElementById('occasionEditorList');
+  if (!el) return;
+  const sorted = activeOccasions();
+  if (!sorted.length) { el.innerHTML = '<p class="panel-help">Ingen anledninger ennaa.</p>'; return; }
+  el.innerHTML = sorted.map((o, i) => `<div class="cat-row"><span style="color:var(--muted);font-size:0.78rem;min-width:16px">${i+1}</span><input class="cat-name-input" value="${h(o.name)}" data-id="${h(o.id)}"><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',-1)">^</button><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',1)">v</button><button class="cat-delete-btn" onclick="deleteOccasion('${h(o.id)}')">x</button></div>`).join('');
+}
+function saveOccasions() {
+  document.querySelectorAll('#occasionEditorList .cat-name-input').forEach(input => { const o = getOccasion(input.dataset.id); if (o) o.name = input.value.trim() || o.name; });
+  closePanel(); renderOccasionFilterBar(); renderList(); scheduleSave();
+}
+function moveOccasion(id, dir) {
+  const sorted = activeOccasions();
+  const idx = sorted.findIndex(o => o.id === id), next = idx + dir;
+  if (idx < 0 || next < 0 || next >= sorted.length) return;
+  const moved = sorted.splice(idx, 1)[0]; sorted.splice(next, 0, moved); sorted.forEach((o, i) => o.sortOrder = i);
+  renderOccasionEditor(); renderOccasionFilterBar(); scheduleSave();
+}
+function deleteOccasion(id) {
+  const o = getOccasion(id);
+  if (!o || !confirm('Slette anledningen? Varer kobles fra, todoer slettes.')) return;
+  occasions = occasions.filter(x => x.id !== id);
+  occasionTodos = occasionTodos.filter(t => t.occasionId !== id);
+  listItems.forEach(item => { if (item.occasionId === id) item.occasionId = null; });
+  if (currentOccasionFilter === id) currentOccasionFilter = null;
+  renderOccasionEditor(); renderOccasionFilterBar(); renderList(); scheduleSave();
+}
+function updateOccasionNotes(id, value) { const o = getOccasion(id); if (!o) return; o.notes = value; scheduleSave(); }
+function addOccasionTodo(occasionId) {
+  const input = document.getElementById('newTodo-' + occasionId);
+  if (!input || !input.value.trim()) return;
+  const maxSort = Math.max(-1, ...occasionTodos.filter(t => t.occasionId === occasionId).map(t => Number(t.sortOrder || 0)));
+  occasionTodos.push({ id: genId(), occasionId, text: input.value.trim(), checked: false, sortOrder: maxSort + 1, contextId: null, createdAt: nowIso() });
+  input.value = '';
   renderList(); scheduleSave();
 }
-
-function nyHandel() {
-  document.getElementById('confirmModal').classList.remove('open');
-  listItems = [];
+function toggleOccasionTodo(id) { const t = occasionTodos.find(x => x.id === id); if (!t) return; t.checked = !t.checked; renderList(); scheduleSave(); }
+function deleteOccasionTodo(id) { occasionTodos = occasionTodos.filter(t => t.id !== id); renderList(); scheduleSave(); }
+function moveOccasionTodo(id, dir) {
+  const t = occasionTodos.find(x => x.id === id); if (!t) return;
+  const group = occasionTodos.filter(x => x.occasionId === t.occasionId).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
+  const idx = group.findIndex(x => x.id === id), next = idx + dir;
+  if (idx < 0 || next < 0 || next >= group.length) return;
+  const moved = group.splice(idx, 1)[0]; group.splice(next, 0, moved); group.forEach((x, i) => x.sortOrder = i);
   renderList(); scheduleSave();
 }
-
-// ── RENDER ──
-function guessSection(text, sections) {
-  return null;
+function addContextFromSettings() { contexts.push({ id: genId(), name: 'Ny kontekst', sortOrder: contexts.length, archived: false, createdAt: nowIso() }); renderContextEditor(); scheduleSave(); }
+function renderContextEditor() {
+  const el = document.getElementById('contextEditorList');
+  if (!el) return;
+  const sorted = activeContexts();
+  if (!sorted.length) { el.innerHTML = '<p class="panel-help">Ingen kontekster ennaa. Eksempel: Kvadrat, Clas Ohlson, Hjemme, PC.</p>'; return; }
+  el.innerHTML = sorted.map((c, i) => `<div class="cat-row"><span style="color:var(--muted);font-size:0.78rem;min-width:16px">${i+1}</span><input class="cat-name-input" value="${h(c.name)}" data-id="${h(c.id)}"><button class="tiny-btn" onclick="moveContext('${h(c.id)}',-1)">^</button><button class="tiny-btn" onclick="moveContext('${h(c.id)}',1)">v</button><button class="cat-delete-btn" onclick="deleteContext('${h(c.id)}')">x</button></div>`).join('');
+}
+function saveContexts() { document.querySelectorAll('#contextEditorList .cat-name-input').forEach(input => { const c = getContext(input.dataset.id); if (c) c.name = input.value.trim() || c.name; }); closePanel(); renderList(); scheduleSave(); }
+function moveContext(id, dir) {
+  const sorted = activeContexts();
+  const idx = sorted.findIndex(c => c.id === id), next = idx + dir;
+  if (idx < 0 || next < 0 || next >= sorted.length) return;
+  const moved = sorted.splice(idx, 1)[0]; sorted.splice(next, 0, moved); sorted.forEach((c, i) => c.sortOrder = i);
+  renderContextEditor(); scheduleSave();
+}
+function deleteContext(id) {
+  const c = getContext(id);
+  if (!c || !confirm('Slette konteksten? Varer kobles fra.')) return;
+  contexts = contexts.filter(x => x.id !== id);
+  listItems.forEach(item => { if (item.contextId === id) item.contextId = null; });
+  renderContextEditor(); renderList(); scheduleSave();
 }
 
-function normalizeItemName(text) {
-  return text.toLowerCase().trim().replace(/\s+/g, ' ');
-}
-
-function getSavedPlacement(text) {
-  return preferences.itemPlacements[normalizeItemName(text)] || null;
-}
-
+// RENDERING
+function getSavedPlacement(text) { return preferences.itemPlacements[normalizeItemName(text)] || null; }
 function rememberPlacement(item) {
   const key = normalizeItemName(item.text);
-
-  preferences.itemPlacements[key] = {
-    store: item.store,
-    kiwiSection: item.kiwiSection || null,
-    andreSection: item.andreSection || null
-  };
+  if (!key) return;
+  preferences.itemPlacements[key] = { store: item.store, kiwiSection: item.kiwiSection || null, andreSection: item.andreSection || null, updatedAt: nowIso() };
 }
-  
+function getScopedItems() { return listItems.filter(item => !currentOccasionFilter || item.occasionId === currentOccasionFilter); }
 function renderList() {
+  const start = performance.now();
+  normalizeState();
+  renderOccasionFilterBar();
   const container = document.getElementById('result');
   const bottomBar = document.getElementById('bottomBar');
   if (!container) return;
-  if (listItems.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="emoji">🛒</div><p>Trykk <strong>＋</strong> for å legge til varer.</p></div>`;
-    bottomBar.style.display = 'none'; return;
-  }
-  bottomBar.style.display = 'flex';
-  if (currentStore === 'andre') renderAndre(container);
-  else renderGrocery(container);
+  const scoped = getScopedItems();
+  bottomBar.style.display = listItems.some(i => i.checked) ? 'flex' : 'none';
+  if (currentStore === 'context') renderContextView(container, scoped);
+  else if (currentStore === 'andre') renderAndre(container, scoped);
+  else renderGrocery(container, scoped);
+  markPerf('Render', Math.round(performance.now() - start) + ' ms');
 }
-
-function renderGrocery(container) {
+function renderOccasionHeader() {
+  if (!currentOccasionFilter) return '';
+  const o = getOccasion(currentOccasionFilter);
+  if (!o) return '';
+  const todos = occasionTodos.filter(t => t.occasionId === o.id).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
+  const rows = todos.map(t => `<div class="todo-row ${t.checked?'done':''}"><button class="todo-check" onclick="toggleOccasionTodo('${h(t.id)}')"></button><span class="todo-text">${h(t.text)}</span><span class="todo-actions"><button class="tiny-btn" onclick="moveOccasionTodo('${h(t.id)}',-1)">^</button><button class="tiny-btn" onclick="moveOccasionTodo('${h(t.id)}',1)">v</button><button class="tiny-btn" onclick="deleteOccasionTodo('${h(t.id)}')">x</button></span></div>`).join('');
+  return `<div class="occasion-card"><h2>${h(o.name)}</h2><label class="field-label">Notater</label><textarea class="occasion-note" placeholder="Notater for anledningen..." oninput="updateOccasionNotes('${h(o.id)}', this.value)">${h(o.notes || '')}</textarea><label class="field-label">Todo uten frist</label><div class="todo-add-row"><input class="text-input" id="newTodo-${h(o.id)}" placeholder="Ny todo..." onkeydown="if(event.key==='Enter'){addOccasionTodo('${h(o.id)}')}"><button class="small-btn" onclick="addOccasionTodo('${h(o.id)}')">Legg til</button></div>${rows || '<p class="panel-help">Ingen todoer her ennaa.</p>'}</div>`;
+}
+function renderGrocery(container, items) {
   const sections = {}, unknown = [], vogna = [];
-  for (const item of listItems) {
+  for (const item of items) {
     if (item.store === 'andre') continue;
     const saved = getSavedPlacement(item.text);
     const sectionId = item.kiwiSection || saved?.kiwiSection || null;
@@ -868,28 +1024,24 @@ function renderGrocery(container) {
     if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId, highlight }); }
     else unknown.push({ ...item, highlight });
   }
-  let html = '';
+  let html = renderOccasionHeader();
+  let listHtml = '';
   kiwiSections.forEach((sec, i) => {
-    const items = sections[sec.id]; if (!items || !items.length) return;
-    html += `<div class="section-header">${i} · ${sec.label}</div>`;
-    items.forEach(item => html += renderItem(item, currentStore));
+    const sectionItems = sections[sec.id]; if (!sectionItems || !sectionItems.length) return;
+    listHtml += `<div class="section-header">${i} &middot; ${h(sec.label)}</div>`;
+    sectionItems.forEach(item => listHtml += renderItem(item, currentStore));
   });
-  if (unknown.length) { html += `<div class="section-header">Ukjent plassering</div>`; unknown.forEach(item => html += renderItem(item, currentStore)); }
-  if (vogna.length) { html += `<div class="section-header in-vogna">✓ Vognå</div>`; vogna.forEach(item => html += renderItem(item, currentStore, true)); }
-  container.innerHTML = html; attachEvents();
+  if (unknown.length) { listHtml += '<div class="section-header">Ukjent plassering</div>'; unknown.forEach(item => listHtml += renderItem(item, currentStore)); }
+  if (vogna.length) { listHtml += '<div class="section-header in-vogna">Vogna</div>'; vogna.forEach(item => listHtml += renderItem(item, currentStore, true)); }
+  if (!listHtml && !currentOccasionFilter) listHtml = '<div class="empty-state"><div class="emoji">&#128722;</div><p>Trykk <strong>+</strong> for aa legge til varer.</p></div>';
+  if (!listHtml && currentOccasionFilter) listHtml = '<div class="empty-state"><p>Ingen matvarer i denne butikkvisningen for anledningen.</p></div>';
+  container.innerHTML = html + listHtml;
+  attachEvents();
 }
-
-let collapsedSections = new Set();
-
-function toggleAndreSection(secId) {
-  if (collapsedSections.has(secId)) collapsedSections.delete(secId);
-  else collapsedSections.add(secId);
-  renderList();
-}
-
-function renderAndre(container) {
+function toggleAndreSection(secId) { if (collapsedSections.has(secId)) collapsedSections.delete(secId); else collapsedSections.add(secId); renderList(); }
+function renderAndre(container, items) {
   const sections = {}, unknown = [], vogna = [];
-  for (const item of listItems) {
+  for (const item of items) {
     if (item.store !== 'andre') continue;
     const saved = getSavedPlacement(item.text);
     const sectionId = item.andreSection || saved?.andreSection || null;
@@ -897,124 +1049,148 @@ function renderAndre(container) {
     if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId }); }
     else unknown.push({ ...item });
   }
-  let html = '';
+  let html = renderOccasionHeader();
+  let listHtml = '';
   andreSections.forEach(sec => {
-    const items = sections[sec.id]; if (!items || !items.length) return;
+    const sectionItems = sections[sec.id]; if (!sectionItems || !sectionItems.length) return;
     const collapsed = collapsedSections.has(sec.id);
-    html += `<div class="section-header andre-collapsible" onclick="toggleAndreSection('${sec.id}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
-      <span>${sec.label} <span style="font-weight:400;opacity:0.6">· ${items.length}</span></span>
-      <span style="font-size:0.7rem">${collapsed ? '▶' : '▼'}</span>
-    </div>`;
-    if (!collapsed) items.forEach(item => html += renderItem(item, 'andre'));
+    listHtml += `<div class="section-header andre-collapsible" onclick="toggleAndreSection('${h(sec.id)}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;"><span>${h(sec.label)} <span style="font-weight:400;opacity:0.6">&middot; ${sectionItems.length}</span></span><span style="font-size:0.7rem">${collapsed ? '>' : 'v'}</span></div>`;
+    if (!collapsed) sectionItems.forEach(item => listHtml += renderItem(item, 'andre'));
   });
-  if (unknown.length) { html += `<div class="section-header">Ikke plassert</div>`; unknown.forEach(item => html += renderItem(item, 'andre')); }
-  if (vogna.length) { html += `<div class="section-header in-vogna">✓ Vognå</div>`; vogna.forEach(item => html += renderItem(item, 'andre', true)); }
-  if (!html) html = `<div class="empty-state"><div class="emoji">🏪</div><p>Ingen varer lagt til for Andre butikker ennå.</p></div>`;
-  container.innerHTML = html; attachEvents();
+  if (unknown.length) { listHtml += '<div class="section-header">Ikke plassert</div>'; unknown.forEach(item => listHtml += renderItem(item, 'andre')); }
+  if (vogna.length) { listHtml += '<div class="section-header in-vogna">Vogna</div>'; vogna.forEach(item => listHtml += renderItem(item, 'andre', true)); }
+  if (!listHtml) listHtml = '<div class="empty-state"><div class="emoji">&#127970;</div><p>Ingen varer lagt til for Andre butikker her.</p></div>';
+  container.innerHTML = html + listHtml;
+  attachEvents();
 }
-
+function renderContextView(container, items) {
+  let html = renderOccasionHeader();
+  let listHtml = '';
+  activeContexts().forEach(ctx => {
+    const ctxItems = items.filter(i => i.contextId === ctx.id);
+    if (!ctxItems.length) return;
+    listHtml += `<div class="context-card"><h2>${h(ctx.name)}</h2>`;
+    ctxItems.forEach(item => listHtml += renderItem(item, item.store === 'andre' ? 'andre' : currentStore));
+    listHtml += '</div>';
+  });
+  if (!listHtml) listHtml = '<div class="empty-state"><div class="emoji">&#128205;</div><p>Ingen varer er koblet til en kontekst ennaa.</p></div>';
+  container.innerHTML = html + listHtml;
+  attachEvents();
+}
 function renderItem(item, store, inVogna = false) {
   const highlight = item.highlight && !inVogna ? 'highlighted' : '';
   const vognaClass = inVogna ? 'in-vogna' : '';
-  let editBtn = '';
-  if (!inVogna) {
-    editBtn = `<button class="edit-btn" onclick="event.stopPropagation();openItemDrawer('${item.id}','${store}')">✏️</button>`;
-  }
-  return `<div class="item-row ${highlight} ${vognaClass}" data-id="${item.id}" data-store="${store}">
-    <div class="item-main">
-      <div class="check-circle"></div>
-      <span class="item-name">${item.text}</span>
-      ${editBtn}
-    </div>
-  </div>`;
+  const occ = item.occasionId ? getOccasion(item.occasionId) : null;
+  const ctx = item.contextId ? getContext(item.contextId) : null;
+  const meta = `${occ && !currentOccasionFilter ? `<span class="item-pill">${h(occ.name)}</span>` : ''}${ctx ? `<span class="item-pill">${h(ctx.name)}</span>` : ''}`;
+  const editBtn = !inVogna ? `<button class="edit-btn" onclick="event.stopPropagation();openItemDrawer('${h(item.id)}')">edit</button>` : '';
+  return `<div class="item-row ${highlight} ${vognaClass}" data-id="${h(item.id)}" data-store="${h(store)}"><div class="item-main"><div class="check-circle"></div><div class="item-content"><span class="item-name">${h(item.text)}</span>${meta ? `<div class="item-meta">${meta}</div>` : ''}</div>${editBtn}</div></div>`;
 }
-
 function attachEvents() {
   document.querySelectorAll('.item-main').forEach(main => {
     main.addEventListener('click', e => {
       if (e.target.classList.contains('edit-btn')) return;
       const row = main.closest('.item-row');
-      const id = row.dataset.id;
-      const item = listItems.find(i => i.id === id);
+      const item = listItems.find(i => i.id === row.dataset.id);
       if (item) { item.checked = !item.checked; renderList(); scheduleSave(); }
     });
   });
 }
 
-// ── ITEM DRAWER (unified) ──
-let activeItemId = null;
-
-function handleModalBackdrop(e, id) {
-  if (e.target === e.currentTarget) {
-    document.getElementById(id).classList.remove('open');
-    renderList();
-  }
-}
-
-function openItemDrawer(itemId, store) {
+// ITEM EDITOR
+function handleModalBackdrop(e, id) { if (e.target === e.currentTarget) closeSectionModal(); }
+function openItemDrawer(itemId) {
   activeItemId = itemId;
   const item = listItems.find(i => i.id === itemId);
   if (!item) return;
-  document.getElementById('sectionModalItem').textContent = item.text;
-
-  const storePicker = document.getElementById('storePickerSection');
-  if (store !== 'andre') {
-    const stores = [
-      {id:'kiwi', label:'🟢 Kiwi',  color:'#1e7a2e'},
-      {id:'rema', label:'🔵 Rema',  color:'#002070'},
-      {id:'meny', label:'🟠 Mega/Meny',  color:'#d46000'}
-    ];
-    storePicker.innerHTML =
-      `<div style="font-family:'Maple Mono',monospace;font-weight:700;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:#6b5f52;margin-bottom:8px">Hvilken butikk?</div>` +
-      stores.map(s =>
-        `<button onclick="setItemStore('${itemId}','${s.id}')" style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:5px;border-radius:8px;border:1px solid ${item.store===s.id?s.color:'#d4cabf'};background:${item.store===s.id?s.color+'18':'transparent'};font-family:'DM Sans',sans-serif;font-size:0.9rem;cursor:pointer;color:#0f0e0b;font-weight:${item.store===s.id?'600':'400'}">${s.label}${item.store===s.id?' ✓':''}</button>`
-      ).join('');
-    storePicker.style.display = 'block';
-    document.getElementById('sectionModalTitle').textContent = 'Rediger vare';
-  } else {
-    storePicker.innerHTML = '';
-    storePicker.style.display = 'none';
-    document.getElementById('sectionModalTitle').textContent = 'Hvilken butikk?';
-  }
-
-  const sections = store === 'andre' ? andreSections : kiwiSections;
-  const curSection = store === 'andre' ? item.andreSection : item.kiwiSection;
-  const saved = getSavedPlacement(item.text);
-  const guessed = curSection || (store === 'andre' ? saved?.andreSection : saved?.kiwiSection) || null;
-  document.getElementById('sectionOptions').innerHTML =
-    (store !== 'andre' ? `<div style="font-family:'Maple Mono',monospace;font-weight:700;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:#6b5f52;margin-bottom:8px">Plassering i butikk</div>` : '') +
-    sections.map((sec, i) => {
-      const isActive = guessed === sec.id;
-      return `<button class="section-option" onclick="assignItemSection('${sec.id}','${store}')" style="${isActive?'border-color:#1e7a2e;background:#1e7a2e18;font-weight:600;':''}">${store==='andre'?sec.label:i+' · '+sec.label}${isActive?' ✓':''}</button>`;
-    }).join('');
-
+  document.getElementById('sectionModalTitle').textContent = 'Rediger vare';
+  document.getElementById('itemNameInput').value = item.text;
+  document.getElementById('itemMetaSection').innerHTML = `<div class="meta-grid"><label><span class="field-label">Anledning</span><select class="select-input" id="itemOccasionSelect">${renderOccasionOptions(item.occasionId || '', 'Ingen anledning')}</select></label><label><span class="field-label">Kontekst</span><select class="select-input" id="itemContextSelect">${renderContextOptions(item.contextId || '', 'Ingen kontekst')}</select></label></div>`;
+  renderStorePicker(item);
+  renderSectionOptions(item);
   document.getElementById('sectionModal').classList.add('open');
 }
-
+function renderStorePicker(item) {
+  const stores = [{id:'kiwi',label:'Kiwi',color:'#1e7a2e'},{id:'rema',label:'Rema',color:'#002070'},{id:'meny',label:'Mega/Meny',color:'#d46000'},{id:'andre',label:'Andre',color:'#6040b0'}];
+  document.getElementById('storePickerSection').innerHTML = `<div class="field-label">Hvilken butikk?</div>` + stores.map(s => `<button onclick="setItemStore('${h(item.id)}','${s.id}')" style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:5px;border-radius:8px;border:1px solid ${item.store===s.id?s.color:'#d4cabf'};background:${item.store===s.id?s.color+'18':'transparent'};font-family:'DM Sans',sans-serif;font-size:0.9rem;cursor:pointer;color:#0f0e0b;font-weight:${item.store===s.id?'600':'400'}">${h(s.label)}${item.store===s.id?' ok':''}</button>`).join('');
+}
+function renderSectionOptions(item) {
+  const isAndre = item.store === 'andre';
+  const sections = isAndre ? andreSections : kiwiSections;
+  const saved = getSavedPlacement(item.text);
+  const curSection = isAndre ? (item.andreSection || saved?.andreSection || null) : (item.kiwiSection || saved?.kiwiSection || null);
+  let html = `<div class="field-label">${isAndre ? 'Hvilken butikk under Andre?' : 'Plassering i butikk'}</div>`;
+  html += `<button class="section-option" onclick="assignItemSection('')">Ingen / ukjent${!curSection?' ok':''}</button>`;
+  html += sections.map((sec, i) => {
+    const active = curSection === sec.id;
+    return `<button class="section-option" onclick="assignItemSection('${h(sec.id)}')" style="${active?'border-color:#1e7a2e;background:#1e7a2e18;font-weight:600;':''}">${isAndre?h(sec.label):i+' &middot; '+h(sec.label)}${active?' ok':''}</button>`;
+  }).join('');
+  document.getElementById('sectionOptions').innerHTML = html;
+}
 function setItemStore(itemId, store) {
   const item = listItems.find(i => i.id === itemId);
   if (!item) return;
   item.store = store;
-  openItemDrawer(itemId, currentStore);
-  scheduleSave();
+  if (store === 'andre') item.kiwiSection = null; else item.andreSection = null;
+  rememberPlacement(item);
+  openItemDrawer(itemId);
+  renderList(); scheduleSave();
 }
-
-function assignItemSection(sectionId, store) {
+function assignItemSection(sectionId) {
   const item = listItems.find(i => i.id === activeItemId);
   if (!item) return;
-  if (store === 'andre') item.andreSection = sectionId;
-  else item.kiwiSection = sectionId;
-  
+  const value = sectionId || null;
+  if (item.store === 'andre') item.andreSection = value; else item.kiwiSection = value;
   rememberPlacement(item);
-  closeSectionModal(); 
-  scheduleSave();
+  renderSectionOptions(item);
+  renderList(); scheduleSave();
 }
+function saveItemDetails() {
+  const item = listItems.find(i => i.id === activeItemId);
+  if (!item) return;
+  const name = document.getElementById('itemNameInput').value.trim();
+  if (name) item.text = name;
+  item.occasionId = document.getElementById('itemOccasionSelect')?.value || null;
+  item.contextId = document.getElementById('itemContextSelect')?.value || null;
+  rememberPlacement(item);
+  closeSectionModal(); scheduleSave();
+}
+function closeSectionModal() { document.getElementById('sectionModal').classList.remove('open'); activeItemId = null; renderList(); }
 
-function closeSectionModal() {
-  document.getElementById('sectionModal').classList.remove('open');
-  activeItemId = null;
-  renderList();
+// CATEGORY EDITOR
+function renderCatEditor(type) {
+  const sections = type === 'andre' ? andreSections : kiwiSections;
+  const listId = type === 'andre' ? 'andreCatList' : 'kiwiCatList';
+  const list = document.getElementById(listId);
+  list.innerHTML = sections.map((sec, i) => `<div class="cat-row" data-idx="${i}" data-type="${type}"><div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;"><button class="cat-move-btn" onclick="moveCat(${i},-1,'${type}')" ${i===0?'disabled':''}>^</button><button class="cat-move-btn" onclick="moveCat(${i},1,'${type}')" ${i===sections.length-1?'disabled':''}>v</button></div><span style="color:var(--muted);font-size:0.78rem;flex-shrink:0;min-width:16px">${i}</span><input class="cat-name-input" value="${h(sec.label)}" data-idx="${i}" data-type="${type}" onchange="getSections('${type}')[${i}].label=this.value"><button class="cat-delete-btn" onclick="deleteCat(${i},'${type}')">x</button></div>`).join('');
 }
+function moveCat(idx, dir, type) { const sections = getSections(type); const newIdx = idx + dir; if (newIdx < 0 || newIdx >= sections.length) return; const moved = sections.splice(idx, 1)[0]; sections.splice(newIdx, 0, moved); renderCatEditor(type); }
+function getSections(type) { return type === 'andre' ? andreSections : kiwiSections; }
+function addCat(type) { const sections = getSections(type); const prefix = type === 'andre' ? 'a' : 'k'; sections.push({ id: prefix + '_' + Date.now(), label: 'Ny', keywords: [] }); renderCatEditor(type); }
+function deleteCat(idx, type) { getSections(type).splice(idx, 1); renderCatEditor(type); }
+function saveCats(type) { const listId = type === 'andre' ? 'andreCatList' : 'kiwiCatList'; document.querySelectorAll(`#${listId} .cat-name-input`).forEach(input => { const idx = parseInt(input.dataset.idx, 10); const sections = getSections(type); if (sections[idx]) sections[idx].label = input.value; }); closePanel(); renderList(); scheduleSave(); }
+function dragStart(e, idx, type) { dragSrcIdx = idx; e.dataTransfer.effectAllowed = 'move'; }
+function dragOver(e, idx, type) { e.preventDefault(); }
+function dragDrop(e, idx, type) { e.preventDefault(); if (dragSrcIdx === null || dragSrcIdx === idx) return; const sections = getSections(type); const moved = sections.splice(dragSrcIdx, 1)[0]; sections.splice(idx, 0, moved); renderCatEditor(type); }
+function dragEnd(type) { dragSrcIdx = null; }
+
+// MAINTENANCE / EXPORT
+function toemVogna() { listItems = listItems.filter(i => !i.checked); renderList(); scheduleSave(); }
+function nyHandel() { document.getElementById('confirmModal').classList.remove('open'); listItems = []; renderList(); scheduleSave(); }
+function renderMaintenance() {
+  const el = document.getElementById('maintenancePanel');
+  if (!el) return;
+  const placements = Object.entries(preferences.itemPlacements || {}).sort(([a],[b]) => a.localeCompare(b));
+  const filtered = placements.filter(([key]) => key.includes(placementSearch.toLowerCase().trim())).slice(0, 80);
+  const dataSize = bytesOf(JSON.stringify({ items: listItems, occasions, occasionTodos, contexts, categories: { kiwi: kiwiSections, andre: andreSections }, preferences }));
+  el.innerHTML = `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.length}</strong><span>anledninger</span></div><div class="metric"><strong>${occasionTodos.length}</strong><span>todoer</span></div><div class="metric"><strong>${placements.length}</strong><span>laerte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div><div class="metric"><strong>${contexts.length}</strong><span>kontekster</span></div></div><p class="panel-help">Desktop-vedlikehold for aa rydde feil i laerte plasseringer og se om payloaden er blitt stor.</p></div><div class="maintenance-card"><h2>Laerte plasseringer</h2><input class="text-input" placeholder="Soek..." value="${h(placementSearch)}" oninput="placementSearch=this.value;renderMaintenance()"><div style="margin-top:10px">${filtered.map(([key, p]) => `<div class="placement-row"><div><strong>${h(key)}</strong><div class="placement-meta">${h(p.store || '-')}${p.kiwiSection?' / '+h(p.kiwiSection):''}${p.andreSection?' / '+h(p.andreSection):''}</div></div><button class="tiny-btn" onclick="deletePlacement('${h(key)}')">Slett</button></div>`).join('') || '<p class="panel-help">Ingen treff.</p>'}</div><div class="panel-actions"><button class="action-btn secondary" onclick="pruneBrokenPlacements()">Rydd tomme</button><button class="action-btn secondary" onclick="clearAllPlacements()">Slett alle</button></div></div><div class="maintenance-card"><h2>Ytelseslogg</h2>${perfLog.map(p => `<div class="placement-row"><div><strong>${h(p.label)}</strong><div class="placement-meta">${h(p.at)} ${h(p.extra)}</div></div></div>`).join('') || '<p class="panel-help">Ingen maalinger ennaa.</p>'}</div>`;
+}
+function deletePlacement(key) { delete preferences.itemPlacements[key]; renderMaintenance(); scheduleSave(); }
+function pruneBrokenPlacements() { let count = 0; Object.keys(preferences.itemPlacements || {}).forEach(key => { const p = preferences.itemPlacements[key] || {}; if (!p.store && !p.kiwiSection && !p.andreSection) { delete preferences.itemPlacements[key]; count++; } }); alert('Ryddet ' + count + ' tomme plasseringer.'); renderMaintenance(); scheduleSave(); }
+function clearAllPlacements() { if (!confirm('Slette alle laerte plasseringer?')) return; preferences.itemPlacements = {}; renderMaintenance(); renderList(); scheduleSave(); }
+function doExport() { document.getElementById('exportText').value = JSON.stringify({ items: listItems, occasions, occasionTodos, contexts, kiwi: kiwiSections, andre: andreSections, preferences }, null, 2); }
+function copyExport() { if (!document.getElementById('exportText').value) doExport(); const ta = document.getElementById('exportText'); ta.select(); document.execCommand('copy'); const btn = document.querySelector('#tab-export .action-btn.secondary'); const old = btn.textContent; btn.textContent = 'Kopiert'; setTimeout(() => btn.textContent = old, 2000); }
+function doImport() { try { const p = JSON.parse(document.getElementById('importText').value.trim()); if (p.items) listItems = p.items; if (p.occasions) occasions = p.occasions; if (p.occasionTodos) occasionTodos = p.occasionTodos; if (p.contexts) contexts = p.contexts; if (p.kiwi) kiwiSections.splice(0, kiwiSections.length, ...p.kiwi); if (p.andre) andreSections.splice(0, andreSections.length, ...p.andre); if (p.preferences) preferences = p.preferences; normalizeState(); document.getElementById('importText').value = ''; closePanel(); renderList(); scheduleSave(); } catch(e) { alert('Feil format.'); } }
 
 // Legacy stubs
 function openStorePicker() {}
@@ -1022,114 +1198,17 @@ function closeStoreModal() { closeSectionModal(); }
 function openSectionPicker() {}
 function setStoreForItem() {}
 function assignSection() {}
+function guessSection(text, sections) { return null; }
 
-// ── CATEGORY EDITOR ──
-function renderCatEditor(type) {
-  const sections = type === 'andre' ? andreSections : kiwiSections;
-  const listId = type === 'andre' ? 'andreCatList' : 'kiwiCatList';
-  const list = document.getElementById(listId);
-  list.innerHTML = sections.map((sec, i) => `
-    <div class="cat-row" data-idx="${i}" data-type="${type}">
-      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
-        <button class="cat-move-btn" onclick="moveCat(${i},-1,'${type}')" ${i===0?'disabled':''}>▲</button>
-        <button class="cat-move-btn" onclick="moveCat(${i},1,'${type}')" ${i===sections.length-1?'disabled':''}>▼</button>
-      </div>
-      <span style="color:var(--muted);font-size:0.78rem;flex-shrink:0;min-width:16px">${i}</span>
-      <input class="cat-name-input" value="${sec.label.replace(/"/g,'&quot;')}" data-idx="${i}" data-type="${type}"
-        onchange="getSections('${type}')[${i}].label=this.value">
-      <button class="cat-delete-btn" onclick="deleteCat(${i},'${type}')">✕</button>
-    </div>`).join('');
-}
-
-function moveCat(idx, dir, type) {
-  const sections = getSections(type);
-  const newIdx = idx + dir;
-  if (newIdx < 0 || newIdx >= sections.length) return;
-  const moved = sections.splice(idx, 1)[0];
-  sections.splice(newIdx, 0, moved);
-  renderCatEditor(type);
-}
-
-function getSections(type) { return type === 'andre' ? andreSections : kiwiSections; }
-
-function addCat(type) {
-  const sections = getSections(type);
-  const prefix = type === 'andre' ? 'a' : 'k';
-  sections.push({ id: prefix + '_' + Date.now(), label: 'Ny', keywords: [] });
-  renderCatEditor(type);
-  const inputs = document.querySelectorAll(`#${type === 'andre' ? 'andreCatList' : 'kiwiCatList'} .cat-name-input`);
-  const last = inputs[inputs.length - 1];
-  if (last) { last.focus(); last.select(); }
-}
-
-function deleteCat(idx, type) { getSections(type).splice(idx, 1); renderCatEditor(type); }
-
-function saveCats(type) {
-  const listId = type === 'andre' ? 'andreCatList' : 'kiwiCatList';
-  document.querySelectorAll(`#${listId} .cat-name-input`).forEach(input => {
-    const idx = parseInt(input.dataset.idx);
-    const sections = getSections(type);
-    if (sections[idx]) sections[idx].label = input.value;
-  });
-  closePanel(); renderList(); scheduleSave();
-}
-
-function dragStart(e, idx, type) { dragSrcIdx = idx; e.dataTransfer.effectAllowed = 'move'; }
-function dragOver(e, idx, type) {
-  e.preventDefault();
-  const listId = type === 'andre' ? 'andreCatList' : 'kiwiCatList';
-  document.querySelectorAll(`#${listId} .cat-row`).forEach(r => r.classList.remove('drag-over'));
-  e.currentTarget.classList.add('drag-over');
-}
-function dragDrop(e, idx, type) {
-  e.preventDefault();
-  if (dragSrcIdx === null || dragSrcIdx === idx) return;
-  const sections = getSections(type);
-  const moved = sections.splice(dragSrcIdx, 1)[0];
-  sections.splice(idx, 0, moved);
-  renderCatEditor(type);
-}
-function dragEnd(type) {
-  dragSrcIdx = null;
-  const listId = type === 'andre' ? 'andreCatList' : 'kiwiCatList';
-  document.querySelectorAll(`#${listId} .cat-row`).forEach(r => { r.classList.remove('dragging'); r.classList.remove('drag-over'); });
-}
-
-// ── EXPORT / IMPORT ──
-function doExport() { document.getElementById('exportText').value = JSON.stringify({ items: listItems, kiwi: kiwiSections, andre: andreSections }, null, 2); }
-function copyExport() {
-  if (!document.getElementById('exportText').value) doExport();
-  const ta = document.getElementById('exportText'); ta.select(); document.execCommand('copy');
-  const btn = document.querySelector('#tab-export .action-btn.secondary');
-  btn.textContent = '✓ Kopiert!'; setTimeout(() => btn.textContent = 'Kopier', 2000);
-}
-function doImport() {
-  try {
-    const p = JSON.parse(document.getElementById('importText').value.trim());
-    if (p.items) listItems = p.items;
-    if (p.kiwi) kiwiSections.splice(0, kiwiSections.length, ...p.kiwi);
-    if (p.andre) andreSections.splice(0, andreSections.length, ...p.andre);
-    document.getElementById('importText').value = '';
-    closePanel(); renderList(); scheduleSave();
-  } catch(e) { alert('Feil format.'); }
-}
-
-// ── ADD PANEL EVENTS (event delegation on body) ──
-document.body.addEventListener('click', e => {
-  const groupBtn = e.target.closest('#addStoreGroup1 [data-group]');
-  if (groupBtn) { selectAddGroup(groupBtn.dataset.group); return; }
-  const storeBtn = e.target.closest('#addStoreGroup2 [data-addstore]');
-  if (storeBtn) { selectAddStore(storeBtn.dataset.addstore); return; }
-});
-
-// ── INIT ──
+// INIT
+markPerf('Init');
 const savedRoom = getSavedRoomCode();
 if (savedRoom) {
-  // Skip room screen entirely, join directly
   document.getElementById('roomScreen').classList.add('hidden');
   document.getElementById('roomCodeInput').value = savedRoom;
   joinRoom();
 }
+
 </script>
 </body>
 </html>
