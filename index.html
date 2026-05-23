@@ -186,22 +186,20 @@
   .store-picker-btn.has-meny  { color: var(--meny); }
   .store-picker-btn.has-andre { color: var(--andre); }
 
+  .item-main { position: relative; padding-right: 46px; }
   .edit-zone {
-    align-self: stretch; flex: 0 0 30%; min-width: 64px; max-width: 150px;
-    border: none; border-left: 1px solid rgba(15,14,11,0.10);
-    background: rgba(255,255,255,0.34); color: var(--text);
-    cursor: pointer; display: flex; align-items: center; justify-content: flex-end;
-    padding: 0 12px; font-family: 'Maple Mono', monospace; font-weight: 800;
-    font-size: 1rem; transition: background 0.15s, color 0.15s;
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(15,14,11,0.16);
+    background: rgba(255,255,255,0.88); color: var(--text); box-shadow: 0 1px 4px rgba(15,14,11,0.08);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    padding: 0; font-family: 'Maple Mono', monospace; font-weight: 900; font-size: 1.18rem;
+    line-height: 1; transition: transform 0.15s, background 0.15s, border-color 0.15s;
+    -webkit-tap-highlight-color: transparent;
   }
-  .edit-zone:hover { background: rgba(255,255,255,0.62); }
-  .edit-zone .edit-icon {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 28px; height: 28px; border-radius: 50%;
-    border: 1px solid rgba(15,14,11,0.18); background: rgba(255,255,255,0.72);
-  }
-  .item-row.highlighted .edit-zone { background: rgba(255,255,255,0.46); border-left-color: rgba(15,14,11,0.12); }
-  .item-row.highlighted .edit-zone:hover { background: rgba(255,255,255,0.75); }
+  .edit-zone:hover { background: var(--surface); border-color: rgba(15,14,11,0.32); transform: translateY(-50%) scale(1.04); }
+  .edit-zone .edit-icon { display: block; transform: translateY(-1px); letter-spacing: -0.08em; }
+  .item-row.highlighted .edit-zone { background: rgba(255,255,255,0.92); border-color: rgba(15,14,11,0.22); color: var(--text); }
+  .item-row.in-vogna .item-main { padding-right: 10px; }
   .place-btn {
     font-size: 0.72rem; padding: 2px 8px; border-radius: 100px;
     border: 1px dashed var(--border); background: transparent; color: var(--muted);
@@ -289,8 +287,11 @@
   .filter-bar { max-width: 640px; margin: 0 auto; padding: 8px 16px 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
   .filter-bar::-webkit-scrollbar { display: none; }
   .filter-chip { padding: 6px 11px; border-radius: 100px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'Maple Mono', monospace; font-weight: 700; font-size: 0.72rem; white-space: nowrap; cursor: pointer; }
-  .filter-chip.active { background: var(--text); border-color: var(--text); color: white; }
+  .filter-chip.active { background: var(--text); border-color: var(--text); color: white; box-shadow: 0 1px 5px rgba(15,14,11,0.13); }
+  .filter-chip.base { border-style: solid; }
   .filter-chip.add { border-style: dashed; }
+  .occasion-emoji-input { width: 56px; flex: 0 0 56px; text-align: center; font-size: 1.15rem; }
+  .occasion-name-input { flex: 1; min-width: 0; }
   .panel-help { color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 12px; }
   .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 0; }
   .field-label { display:block; font-family:'Maple Mono',monospace; font-weight:800; font-size:0.79rem; text-transform:uppercase; letter-spacing:0.075em; color:var(--text); margin: 12px 0 6px; }
@@ -506,19 +507,20 @@ async function api(action, token, payload = null) {
 
 // DEFAULT DATA
 const defaultKiwiSections = [
-  { id: 'k0',  label: 'Småbrus',              keywords: ['brus','cola','pepsi','fanta','soda','mineralvann','juice','smoothie','saft'] },
-  { id: 'k1',  label: 'Frukt og grønt',        keywords: ['frukt','grønt','eple','banan','appelsin','tomat','agurk','løk','hvitløk','salat','paprika','gulrot','sitron','lime','jordbær','blåbær','mango','avokado','spinat','brokkoli','blomkål','squash','sopp','purre','selleri'] },
-  { id: 'k2',  label: 'Pålegg',                keywords: ['syltetøy','makrell','honning','jam','marmelade','peanøtt','nøttesmør','leverpostei','skinke','salami','servelat','kaviar','tunfisk','sardiner'] },
-  { id: 'k3',  label: 'Ost',                   keywords: ['ost','jarlsberg','norvegia','brie','camembert','fetaost','feta','kremost','brunost','gudbrandsdalsost'] },
-  { id: 'k4',  label: 'Kjøtt',                 keywords: ['kjøtt','kylling','biff','svin','bacon','pølse','laks','fisk','reke','koteletter','karbonader','hamburgere'] },
-  { id: 'k5',  label: 'Meieri og krydder',     keywords: ['melk','fløte','rømme','yoghurt','ketchup','sennep','krydder','pepper','salt','oregano','basilikum','paprikapulver','karri','timian','rosmarin','ingefær','kanel','soya','tabasco','sukker','vanilje'] },
-  { id: 'k6',  label: 'Taco og pasta og sånt', keywords: ['taco','pasta','nudler','ris','spaghetti','penne','lasagne','makaroni','couscous','quinoa','linser','bønner','kikerter','salsa','tacokrydder','wrap','tortilla'] },
-  { id: 'k7',  label: 'Egg og majones',        keywords: ['egg','majones'] },
-  { id: 'k8',  label: 'Frysevarer',            keywords: ['frys','frossen','frosne','iskrem','pommes','frites'] },
-  { id: 'k9',  label: 'Hygiene',               keywords: ['toalettpapir','tørkerull','tannkrem','tannbørste','shampoo','såpe','deodorant','barbering','hårvask','vaskemiddel','oppvask','oppvaskmiddel','rengjøring','klut'] },
-  { id: 'k10', label: 'Hermetikk og dessert',  keywords: ['tomatsaus','ananas','hermetikk','dessert','puddingpulver','gelatin','kakao','sjokoladepulver'] },
-  { id: 'k11', label: 'Bakevarer',             keywords: ['brød','knekkebrød','rundstykke','lefse','loff','bagett','croissant','mel','bakepulver','gjær','havregryn','müsli','frokostblanding','cornflakes'] },
-  { id: 'k12', label: 'Digg',                  keywords: ['sjokolade','snop','godteri','chips','popcorn','nøtter','mandel','valnøtt','cashew','rosiner','kjeks','småkake','kake','kakemiks'] },
+  { id: 'k0',  label: '🥤 Småbrus',                 keywords: ['brus','cola','pepsi','fanta','soda','mineralvann','juice','smoothie','saft'] },
+  { id: 'k1',  label: '🥕 Frukt og grønt',           keywords: ['frukt','grønt','eple','banan','appelsin','tomat','agurk','løk','hvitløk','salat','paprika','gulrot','sitron','lime','jordbær','blåbær','mango','avokado','spinat','brokkoli','blomkål','squash','sopp','purre','selleri'] },
+  { id: 'k11', label: '🍞 Brød',                     keywords: ['brød','knekkebrød','rundstykke','lefse','loff','bagett','croissant'] },
+  { id: 'k2',  label: '🍯 Pålegg',                   keywords: ['syltetøy','makrell','honning','jam','marmelade','peanøtt','nøttesmør','leverpostei','skinke','salami','servelat','kaviar','tunfisk','sardiner'] },
+  { id: 'k3',  label: '🧀 Ost',                      keywords: ['ost','jarlsberg','norvegia','brie','camembert','fetaost','feta','kremost','brunost','gudbrandsdalsost'] },
+  { id: 'k4',  label: '🥩 Kjøtt',                    keywords: ['kjøtt','kylling','biff','svin','bacon','pølse','laks','fisk','reke','koteletter','karbonader','hamburgere'] },
+  { id: 'k5',  label: '🥛 Meieri og krydder',        keywords: ['melk','fløte','rømme','yoghurt','ketchup','sennep','krydder','pepper','salt','oregano','basilikum','paprikapulver','karri','timian','rosmarin','ingefær','kanel','soya','tabasco','sukker','vanilje'] },
+  { id: 'k6',  label: '🌮 Taco og pasta og sånt',    keywords: ['taco','pasta','nudler','ris','spaghetti','penne','lasagne','makaroni','couscous','quinoa','linser','bønner','kikerter','salsa','tacokrydder','wrap','tortilla'] },
+  { id: 'k7',  label: '🥚 Egg og majones',           keywords: ['egg','majones'] },
+  { id: 'k8',  label: '🥶 Frysevarer',               keywords: ['frys','frossen','frosne','iskrem','pommes','frites'] },
+  { id: 'k9',  label: '🧻 Hygiene',                  keywords: ['toalettpapir','tørkerull','tannkrem','tannbørste','shampoo','såpe','deodorant','barbering','hårvask','vaskemiddel','oppvask','oppvaskmiddel','rengjøring','klut'] },
+  { id: 'k10', label: '🥫 Hermetikk og dessert',     keywords: ['tomatsaus','ananas','hermetikk','dessert','puddingpulver','gelatin','kakao','sjokoladepulver'] },
+  { id: 'k13', label: '🫙 Bakevarer',                keywords: ['mel','bakepulver','gjær','havregryn','müsli','frokostblanding','cornflakes','kake','kakemiks'] },
+  { id: 'k12', label: '🍫 Digg',                     keywords: ['sjokolade','snop','godteri','chips','popcorn','nøtter','mandel','valnøtt','cashew','rosiner','kjeks','småkake'] },
 ];
 
 const defaultAndreSections = [
@@ -537,7 +539,7 @@ let occasionTodos = [];
 let contexts = [];
 let preferences = { itemPlacements: {} };
 let currentStore = 'kiwi';
-let currentOccasionFilter = null;
+let activeOccasionFilters = new Set();
 let currentRoomCode = null;
 let openPanel = null;
 let saveTimeout = null;
@@ -579,6 +581,29 @@ function getOccasion(id) { return occasions.find(o => o.id === id) || null; }
 function getContext(id) { return contexts.find(c => c.id === id) || null; }
 function activeOccasions() { return occasions.filter(o => !o.archived).sort((a,b)=>(a.sortOrder || 0) - (b.sortOrder || 0)); }
 function activeContexts() { return contexts.filter(c => !c.archived).sort((a,b)=>(a.sortOrder || 0) - (b.sortOrder || 0)); }
+function guessOccasionEmoji(name) {
+  const n = normalizeItemName(name);
+  if (!n) return '';
+  if (n.includes('17') || n.includes('mai') || n.includes('nasjonal')) return '🇳🇴';
+  if (n.includes('sommer') || n.includes('sol')) return '☀️';
+  if (n.includes('jul')) return '🎄';
+  if (n.includes('hytte') || n.includes('hytta')) return '🏕️';
+  if (n.includes('ferie') || n.includes('reise') || n.includes('tur')) return '✈️';
+  if (n.includes('gave') || n.includes('gaver')) return '🎁';
+  if (n.includes('bursdag')) return '🎂';
+  if (n.includes('påske') || n.includes('paske')) return '🐣';
+  if (n.includes('halloween')) return '🎃';
+  if (n.includes('vinter')) return '❄️';
+  return '';
+}
+function occasionLabel(o) {
+  if (!o) return '';
+  const emoji = String(o.emoji || '').trim();
+  return (emoji ? emoji + ' ' : '') + o.name;
+}
+function selectedOccasions() { return activeOccasions().filter(o => activeOccasionFilters.has(o.id)); }
+function hasActiveOccasionFilters() { return activeOccasionFilters.size > 0; }
+function normalizeEmojiInput(value) { return String(value || '').trim(); }
 
 // ROOM CODE STORAGE
 function saveRoomCode(code) {
@@ -620,6 +645,36 @@ function getLocalHash() {
   return JSON.stringify({ items: listItems, occasions, occasionTodos, contexts }) + JSON.stringify({ kiwi: kiwiSections, andre: andreSections }) + JSON.stringify(preferences || {});
 }
 
+function ensureDefaultKiwiCategories() {
+  if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
+  if (preferences.kiwiCategoryVersion === 2) return;
+  const defaultsById = new Map(defaultKiwiSections.map(sec => [sec.id, sec]));
+  const oldLabelsById = {
+    k0: ['Småbrus'], k1: ['Frukt og grønt'], k2: ['Pålegg'], k3: ['Ost'], k4: ['Kjøtt'],
+    k5: ['Meieri og krydder'], k6: ['Taco og pasta og sånt'], k7: ['Egg og majones'],
+    k8: ['Frysevarer'], k9: ['Hygiene'], k10: ['Hermetikk og dessert'], k11: ['Bakevarer','Brød'], k12: ['Digg']
+  };
+  const existingById = new Map(kiwiSections.map(sec => [sec.id, sec]));
+  defaultKiwiSections.forEach(def => {
+    const existing = existingById.get(def.id);
+    if (existing) {
+      const plain = String(existing.label || '').replace(/^\p{Extended_Pictographic}[️]?\s*/u, '').trim();
+      const known = (oldLabelsById[def.id] || []).includes(plain) || existing.label === def.label;
+      if (known) existing.label = def.label;
+      if (!Array.isArray(existing.keywords) || !existing.keywords.length) existing.keywords = def.keywords;
+    } else {
+      kiwiSections.push(JSON.parse(JSON.stringify(def)));
+    }
+  });
+  const preferred = new Map(defaultKiwiSections.map((sec, idx) => [sec.id, idx]));
+  kiwiSections.sort((a, b) => {
+    const ai = preferred.has(a.id) ? preferred.get(a.id) : 1000;
+    const bi = preferred.has(b.id) ? preferred.get(b.id) : 1000;
+    return ai - bi;
+  });
+  preferences.kiwiCategoryVersion = 2;
+}
+
 function normalizeState() {
   if (!Array.isArray(listItems)) listItems = [];
   if (!Array.isArray(occasions)) occasions = [];
@@ -636,6 +691,7 @@ function normalizeState() {
   occasions.forEach((o, i) => {
     if (!o.id) o.id = genId();
     if (!o.name) o.name = 'Anledning ' + (i + 1);
+    if (!('emoji' in o)) o.emoji = guessOccasionEmoji(o.name);
     if (!('notes' in o)) o.notes = '';
     if (!('sortOrder' in o)) o.sortOrder = i;
     if (!('archived' in o)) o.archived = false;
@@ -655,7 +711,8 @@ function normalizeState() {
   });
   if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
   if (!preferences.itemPlacements || typeof preferences.itemPlacements !== 'object') preferences.itemPlacements = {};
-  if (currentOccasionFilter && !getOccasion(currentOccasionFilter)) currentOccasionFilter = null;
+  ensureDefaultKiwiCategories();
+  activeOccasionFilters = new Set([...activeOccasionFilters].filter(id => !!getOccasion(id)));
 }
 
 // SUPABASE EDGE FUNCTION FLOW
@@ -841,7 +898,7 @@ function togglePanel(name) {
   if (name === 'add') {
     if (currentStore === 'andre') { addGroup = 'andre'; addStore = (andreSections[0] && andreSections[0].id) || 'a0'; }
     else { addGroup = 'dagligvare'; addStore = ['kiwi','rema','meny'].includes(currentStore) ? currentStore : 'kiwi'; }
-    addOccasionId = currentStore === 'context' ? null : (currentOccasionFilter || null);
+    addOccasionId = currentStore === 'context' ? null : (activeOccasionFilters.size === 1 ? [...activeOccasionFilters][0] : null);
     renderAddPanel();
   }
 }
@@ -892,7 +949,7 @@ function addItems() {
 
 // OCCASIONS AND CONTEXTS
 function renderOccasionOptions(selectedId, emptyLabel) {
-  return `<option value="">${h(emptyLabel)}</option>` + activeOccasions().map(o => `<option value="${h(o.id)}" ${o.id===selectedId?'selected':''}>${h(o.name)}</option>`).join('');
+  return `<option value="">${h(emptyLabel)}</option>` + activeOccasions().map(o => `<option value="${h(o.id)}" ${o.id===selectedId?'selected':''}>${h(occasionLabel(o))}</option>`).join('');
 }
 function renderContextOptions(selectedId, emptyLabel) {
   return `<option value="">${h(emptyLabel)}</option>` + activeContexts().map(c => `<option value="${h(c.id)}" ${c.id===selectedId?'selected':''}>${h(c.name)}</option>`).join('');
@@ -903,17 +960,28 @@ function renderOccasionFilterBar() {
   const visible = currentStore !== 'context' && activeOccasions().length > 0;
   bar.style.display = visible ? 'flex' : 'none';
   if (!visible) { bar.innerHTML = ''; return; }
-  let html = `<button class="filter-chip ${!currentOccasionFilter?'active':''}" onclick="setOccasionFilter(null)">Alle</button>`;
-  activeOccasions().forEach(o => { html += `<button class="filter-chip ${currentOccasionFilter===o.id?'active':''}" onclick="setOccasionFilter('${h(o.id)}')">${h(o.name)}</button>`; });
+  let html = `<button class="filter-chip base ${!hasActiveOccasionFilters()?'active':''}" onclick="setOccasionFilter(null)" aria-pressed="${!hasActiveOccasionFilters()}">Hverdag</button>`;
+  activeOccasions().forEach(o => {
+    const active = activeOccasionFilters.has(o.id);
+    html += `<button class="filter-chip ${active?'active':''}" onclick="setOccasionFilter('${h(o.id)}')" aria-pressed="${active}">${active?'✓ ':''}${h(occasionLabel(o))}</button>`;
+  });
   bar.innerHTML = html;
 }
-function setOccasionFilter(id) { currentOccasionFilter = (id && currentOccasionFilter !== id) ? id : null; renderList(); }
+function setOccasionFilter(id) {
+  if (!id) activeOccasionFilters.clear();
+  else if (activeOccasionFilters.has(id)) activeOccasionFilters.delete(id);
+  else activeOccasionFilters.add(id);
+  renderList();
+}
 function addOccasionFromNext() {
-  const input = document.getElementById('newOccasionName');
-  const name = input ? input.value.trim() : '';
+  const nameInput = document.getElementById('newOccasionName');
+  const emojiInput = document.getElementById('newOccasionEmoji');
+  const name = nameInput ? nameInput.value.trim() : '';
   if (!name) return;
-  occasions.push({ id: genId(), name, notes: '', sortOrder: occasions.length, archived: false, createdAt: nowIso() });
-  if (input) input.value = '';
+  const emoji = normalizeEmojiInput(emojiInput ? emojiInput.value : '') || guessOccasionEmoji(name);
+  occasions.push({ id: genId(), name, emoji, notes: '', sortOrder: occasions.length, archived: false, createdAt: nowIso() });
+  if (nameInput) nameInput.value = '';
+  if (emojiInput) emojiInput.value = '';
   renderList();
   scheduleSave();
 }
@@ -921,12 +989,21 @@ function updateOccasionName(id, value) {
   const o = getOccasion(id);
   if (!o) return;
   o.name = value.trim() || o.name;
+  if (!o.emoji) o.emoji = guessOccasionEmoji(o.name);
+  renderOccasionFilterBar();
+  renderList();
+  scheduleSave();
+}
+function updateOccasionEmoji(id, value) {
+  const o = getOccasion(id);
+  if (!o) return;
+  o.emoji = normalizeEmojiInput(value);
   renderOccasionFilterBar();
   renderList();
   scheduleSave();
 }
 function addOccasionFromSettings() {
-  occasions.push({ id: genId(), name: 'Ny anledning', notes: '', sortOrder: occasions.length, archived: false, createdAt: nowIso() });
+  occasions.push({ id: genId(), name: 'Ny anledning', emoji: '', notes: '', sortOrder: occasions.length, archived: false, createdAt: nowIso() });
   renderList(); scheduleSave();
 }
 function renderOccasionEditor() {
@@ -934,7 +1011,7 @@ function renderOccasionEditor() {
   if (!el) return;
   const sorted = activeOccasions();
   if (!sorted.length) { el.innerHTML = '<p class="panel-help">Ingen anledninger ennå.</p>'; return; }
-  el.innerHTML = sorted.map((o, i) => `<div class="cat-row"><span style="color:var(--muted);font-size:0.78rem;min-width:16px">${i+1}</span><input class="cat-name-input" value="${h(o.name)}" data-id="${h(o.id)}"><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',-1)">▲</button><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',1)">▼</button><button class="cat-delete-btn" onclick="deleteOccasion('${h(o.id)}')">×</button></div>`).join('');
+  el.innerHTML = sorted.map((o, i) => `<div class="cat-row"><span style="color:var(--muted);font-size:0.78rem;min-width:16px">${i+1}</span><input class="cat-name-input" value="${h(occasionLabel(o))}" data-id="${h(o.id)}"><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',-1)">▲</button><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',1)">▼</button><button class="cat-delete-btn" onclick="deleteOccasion('${h(o.id)}')">×</button></div>`).join('');
 }
 function saveOccasions() {
   document.querySelectorAll('#occasionEditorList .cat-name-input').forEach(input => { const o = getOccasion(input.dataset.id); if (o) o.name = input.value.trim() || o.name; });
@@ -953,7 +1030,7 @@ function deleteOccasion(id) {
   occasions = occasions.filter(x => x.id !== id);
   occasionTodos = occasionTodos.filter(t => t.occasionId !== id);
   listItems.forEach(item => { if (item.occasionId === id) item.occasionId = null; });
-  if (currentOccasionFilter === id) currentOccasionFilter = null;
+  activeOccasionFilters.delete(id);
   renderList(); scheduleSave();
 }
 function updateOccasionNotes(id, value) { const o = getOccasion(id); if (!o) return; o.notes = value; scheduleSave(); }
@@ -1023,7 +1100,7 @@ function rememberPlacement(item) {
   preferences.itemPlacements[key] = { store: item.store, kiwiSection: item.kiwiSection || null, andreSection: item.andreSection || null, updatedAt: nowIso() };
 }
 function isInActiveShoppingScope(item) {
-  if (currentOccasionFilter) return !item.occasionId || item.occasionId === currentOccasionFilter;
+  if (hasActiveOccasionFilters()) return !item.occasionId || activeOccasionFilters.has(item.occasionId);
   return !item.occasionId;
 }
 function getScopedItems() {
@@ -1047,25 +1124,17 @@ function renderList() {
 function hasOccasionItems(occasionId) { return listItems.some(i => i.occasionId === occasionId); }
 function primaryEmptyText() {
   return listItems.some(i => i.occasionId)
-    ? 'Ingen varer i primærlisten. Velg en anledning over for å toggle inn anledningsvarer.'
+    ? 'Ingen varer i Hverdag. Velg én eller flere anledninger over for å toggle inn anledningsvarer.'
     : 'Trykk <strong>+</strong> for å legge til varer.';
 }
 function occasionEmptyText() {
   return 'Ingen varer er knyttet til denne anledningen ennå.<br>For å knytte en vare til en anledning, rediger varen i handlelisten.';
 }
 function storeOccasionEmptyText() {
-  if (currentOccasionFilter && !hasOccasionItems(currentOccasionFilter)) return occasionEmptyText();
-  const o = getOccasion(currentOccasionFilter);
-  return 'Ingen primærvarer' + (o ? ' eller ' + h(o.name) + '-varer' : '') + ' i denne butikkvisningen.';
-}
-
-function renderOccasionHeader() {
-  if (!currentOccasionFilter) return '';
-  const o = getOccasion(currentOccasionFilter);
-  if (!o) return '';
-  const todos = occasionTodos.filter(t => t.occasionId === o.id).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
-  const rows = todos.map(t => `<div class="todo-row ${t.checked?'done':''}"><button class="todo-check" onclick="toggleOccasionTodo('${h(t.id)}')"></button><span class="todo-text">${h(t.text)}</span><span class="todo-actions"><button class="tiny-btn" onclick="moveOccasionTodo('${h(t.id)}',-1)">▲</button><button class="tiny-btn" onclick="moveOccasionTodo('${h(t.id)}',1)">▼</button><button class="tiny-btn" onclick="deleteOccasionTodo('${h(t.id)}')">×</button></span></div>`).join('');
-  return `<div class="occasion-card"><h2>${h(o.name)}</h2><label class="field-label">NOTATER</label><textarea class="occasion-note" placeholder="Notater for anledningen..." oninput="updateOccasionNotes('${h(o.id)}', this.value)">${h(o.notes || '')}</textarea><label class="field-label">TODO UTEN FRIST</label><div class="todo-add-row"><input class="text-input" id="newTodo-${h(o.id)}" placeholder="Ny todo..." onkeydown="if(event.key==='Enter'){addOccasionTodo('${h(o.id)}')}"><button class="small-btn" onclick="addOccasionTodo('${h(o.id)}')">Legg til</button></div>${rows || '<p class="panel-help">Ingen todoer her ennå.</p>'}</div>`;
+  const chosen = selectedOccasions();
+  if (chosen.length === 1 && !hasOccasionItems(chosen[0].id)) return occasionEmptyText();
+  const names = chosen.map(o => h(occasionLabel(o))).join(', ');
+  return 'Ingen Hverdag-varer' + (names ? ' eller varer fra ' + names : '') + ' i denne butikkvisningen.';
 }
 function renderGrocery(container, items) {
   const sections = {}, unknown = [], vogna = [];
@@ -1082,13 +1151,13 @@ function renderGrocery(container, items) {
   let listHtml = '';
   kiwiSections.forEach((sec, i) => {
     const sectionItems = sections[sec.id]; if (!sectionItems || !sectionItems.length) return;
-    listHtml += `<div class="section-header">${i} &middot; ${h(sec.label)}</div>`;
+    listHtml += `<div class="section-header">${h(sec.label)}</div>`;
     sectionItems.forEach(item => listHtml += renderItem(item, currentStore));
   });
   if (unknown.length) { listHtml += '<div class="section-header">Ukjent plassering</div>'; unknown.forEach(item => listHtml += renderItem(item, currentStore)); }
   if (vogna.length) { listHtml += '<div class="section-header in-vogna">Vogna</div>'; vogna.forEach(item => listHtml += renderItem(item, currentStore, true)); }
-  if (!listHtml && !currentOccasionFilter) listHtml = `<div class="empty-state"><div class="emoji">&#128722;</div><p>${primaryEmptyText()}</p></div>`;
-  if (!listHtml && currentOccasionFilter) listHtml = `<div class="empty-state"><p>${storeOccasionEmptyText()}</p></div>`;
+  if (!listHtml && !hasActiveOccasionFilters()) listHtml = `<div class="empty-state"><div class="emoji">&#128722;</div><p>${primaryEmptyText()}</p></div>`;
+  if (!listHtml && hasActiveOccasionFilters()) listHtml = `<div class="empty-state"><p>${storeOccasionEmptyText()}</p></div>`;
   container.innerHTML = html + listHtml;
   attachEvents();
 }
@@ -1113,7 +1182,7 @@ function renderAndre(container, items) {
   });
   if (unknown.length) { listHtml += '<div class="section-header">Ikke plassert</div>'; unknown.forEach(item => listHtml += renderItem(item, 'andre')); }
   if (vogna.length) { listHtml += '<div class="section-header in-vogna">Vogna</div>'; vogna.forEach(item => listHtml += renderItem(item, 'andre', true)); }
-  if (!listHtml) listHtml = currentOccasionFilter ? `<div class="empty-state"><p>${storeOccasionEmptyText()}</p></div>` : '<div class="empty-state"><div class="emoji">&#127970;</div><p>Ingen varer lagt til for Andre butikker her.</p></div>';
+  if (!listHtml) listHtml = hasActiveOccasionFilters() ? `<div class="empty-state"><p>${storeOccasionEmptyText()}</p></div>` : '<div class="empty-state"><div class="emoji">&#127970;</div><p>Ingen varer lagt til for Andre butikker her.</p></div>';
   container.innerHTML = html + listHtml;
   attachEvents();
 }
@@ -1131,8 +1200,10 @@ function renderLinkedItems(items, emptyHtml) {
   if (!items.length) return `<p class="panel-help">${emptyHtml}</p>`;
   return `<div class="linked-items">${items.map(item => {
     const ctx = item.contextId ? getContext(item.contextId) : null;
+    const occ = item.occasionId ? getOccasion(item.occasionId) : null;
     const checked = item.checked ? ' · i vogna' : '';
-    return `<div class="linked-item-row"><div><strong>${h(item.text)}</strong>${ctx ? `<div class="item-meta"><span class="item-pill">${h(ctx.name)}</span></div>` : ''}</div><div class="linked-item-meta">${h(storeLabelForItem(item))}${checked}</div></div>`;
+    const pills = `${occ ? `<span class="item-pill">${h(occasionLabel(occ))}</span>` : ''}${ctx ? `<span class="item-pill">${h(ctx.name)}</span>` : ''}`;
+    return `<div class="linked-item-row"><div><strong>${h(item.text)}</strong>${pills ? `<div class="item-meta">${pills}</div>` : ''}</div><div class="linked-item-meta">${h(storeLabelForItem(item))}${checked}</div></div>`;
   }).join('')}</div>`;
 }
 function renderOccasionManagementCard(o) {
@@ -1140,7 +1211,7 @@ function renderOccasionManagementCard(o) {
   const rows = todos.map(t => `<div class="todo-row ${t.checked?'done':''}"><button class="todo-check" onclick="toggleOccasionTodo('${h(t.id)}')"></button><span class="todo-text">${h(t.text)}</span><span class="todo-actions"><button class="tiny-btn" onclick="moveOccasionTodo('${h(t.id)}',-1)">▲</button><button class="tiny-btn" onclick="moveOccasionTodo('${h(t.id)}',1)">▼</button><button class="tiny-btn" onclick="deleteOccasionTodo('${h(t.id)}')">×</button></span></div>`).join('');
   const items = listItems.filter(i => i.occasionId === o.id);
   const itemHelp = 'Ingen varer er knyttet til denne anledningen ennå.<br>For å knytte en vare til en anledning, rediger varen i handlelisten.';
-  return `<div class="occasion-card"><div class="card-heading-row"><input class="occasion-title-input" value="${h(o.name)}" onchange="updateOccasionName('${h(o.id)}', this.value)" aria-label="Navn på anledning"><span class="card-actions"><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',-1)">▲</button><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',1)">▼</button><button class="tiny-btn" onclick="deleteOccasion('${h(o.id)}')">×</button></span></div><p class="card-summary">${items.length} varer · ${todos.length} todoer</p><label class="field-label">NOTATER</label><textarea class="occasion-note" placeholder="Notater for anledningen..." oninput="updateOccasionNotes('${h(o.id)}', this.value)">${h(o.notes || '')}</textarea><label class="field-label">TODO UTEN FRIST</label><div class="todo-add-row"><input class="text-input" id="newTodo-${h(o.id)}" placeholder="Ny todo..." onkeydown="if(event.key==='Enter'){addOccasionTodo('${h(o.id)}')}"><button class="small-btn" onclick="addOccasionTodo('${h(o.id)}')">Legg til</button></div>${rows || '<p class="panel-help">Ingen todoer her ennå.</p>'}<label class="field-label">VARER KNYTTET TIL ANLEDNINGEN</label>${renderLinkedItems(items, itemHelp)}</div>`;
+  return `<div class="occasion-card"><div class="card-heading-row"><input class="text-input occasion-emoji-input" value="${h(o.emoji || '')}" placeholder="☀️" onchange="updateOccasionEmoji('${h(o.id)}', this.value)" aria-label="Emoji for anledning"><input class="occasion-title-input occasion-name-input" value="${h(o.name)}" onchange="updateOccasionName('${h(o.id)}', this.value)" aria-label="Navn på anledning"><span class="card-actions"><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',-1)">▲</button><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',1)">▼</button><button class="tiny-btn" onclick="deleteOccasion('${h(o.id)}')">×</button></span></div><p class="card-summary">${h(occasionLabel(o))} · ${items.length} varer · ${todos.length} todoer</p><label class="field-label">NOTATER</label><textarea class="occasion-note" placeholder="Notater for anledningen..." oninput="updateOccasionNotes('${h(o.id)}', this.value)">${h(o.notes || '')}</textarea><label class="field-label">TODO UTEN FRIST</label><div class="todo-add-row"><input class="text-input" id="newTodo-${h(o.id)}" placeholder="Ny todo..." onkeydown="if(event.key==='Enter'){addOccasionTodo('${h(o.id)}')}"><button class="small-btn" onclick="addOccasionTodo('${h(o.id)}')">Legg til</button></div>${rows || '<p class="panel-help">Ingen todoer her ennå.</p>'}<label class="field-label">VARER KNYTTET TIL ANLEDNINGEN</label>${renderLinkedItems(items, itemHelp)}</div>`;
 }
 function renderContextManagementCard(c) {
   const items = listItems.filter(i => i.contextId === c.id);
@@ -1150,7 +1221,7 @@ function renderContextManagementCard(c) {
 function renderNextView(container) {
   const occs = activeOccasions();
   const ctxs = activeContexts();
-  let html = `<div class="occasion-card"><div class="next-section-title"><h2>Anledninger</h2></div><p class="panel-help">Her oppretter og redigerer du anledninger, notater og todoer. I K/R/M/A kan du trykke på en anledning over listen for å toggle disse varene inn sammen med primærlisten.</p><div class="todo-add-row"><input class="text-input" id="newOccasionName" placeholder="Ny anledning, f.eks. Sommer" onkeydown="if(event.key==='Enter'){addOccasionFromNext()}"><button class="small-btn" onclick="addOccasionFromNext()">+ Ny</button></div></div>`;
+  let html = `<div class="occasion-card"><div class="next-section-title"><h2>Anledninger</h2></div><p class="panel-help">Her oppretter og redigerer du anledninger, notater, todoer og emoji. I K/R/M/A kan du trykke på én eller flere anledninger over listen for å toggle disse varene inn sammen med Hverdag-listen.</p><div class="todo-add-row"><input class="text-input occasion-emoji-input" id="newOccasionEmoji" placeholder="☀️" aria-label="Emoji"><input class="text-input occasion-name-input" id="newOccasionName" placeholder="Ny anledning, f.eks. Sommer" onkeydown="if(event.key==='Enter'){addOccasionFromNext()}"><button class="small-btn" onclick="addOccasionFromNext()">+ Ny</button></div></div>`;
   html += occs.length ? occs.map(renderOccasionManagementCard).join('') : '<div class="empty-state"><p>Ingen anledninger ennå.</p></div>';
   html += `<div class="soft-divider"></div><div class="context-card"><div class="next-section-title"><h2>Kontekster</h2></div><p class="panel-help">Kontekster er «neste gang jeg er ...». De kan samle varer på tvers av butikker, for eksempel Kvadrat, Clas Ohlson, Hjemme eller PC.</p><div class="todo-add-row"><input class="text-input" id="newContextName" placeholder="Ny kontekst, f.eks. Kvadrat" onkeydown="if(event.key==='Enter'){addContextFromNext()}"><button class="small-btn" onclick="addContextFromNext()">+ Ny</button></div></div>`;
   html += ctxs.length ? ctxs.map(renderContextManagementCard).join('') : '<div class="empty-state"><p>Ingen kontekster ennå.</p></div>';
@@ -1161,8 +1232,8 @@ function renderItem(item, store, inVogna = false) {
   const vognaClass = inVogna ? 'in-vogna' : '';
   const occ = item.occasionId ? getOccasion(item.occasionId) : null;
   const ctx = item.contextId ? getContext(item.contextId) : null;
-  const meta = `${occ ? `<span class="item-pill">${h(occ.name)}</span>` : ''}${ctx ? `<span class="item-pill">${h(ctx.name)}</span>` : ''}`;
-  const editBtn = !inVogna ? `<button class="edit-zone" aria-label="Rediger ${h(item.text)}" onclick="event.stopPropagation();openItemDrawer('${h(item.id)}')"><span class="edit-icon">✎</span></button>` : '';
+  const meta = `${occ ? `<span class="item-pill">${h(occasionLabel(occ))}</span>` : ''}${ctx ? `<span class="item-pill">${h(ctx.name)}</span>` : ''}`;
+  const editBtn = !inVogna ? `<button class="edit-zone" aria-label="Rediger ${h(item.text)}" onclick="event.stopPropagation();openItemDrawer('${h(item.id)}')"><span class="edit-icon">⋯</span></button>` : '';
   return `<div class="item-row ${highlight} ${vognaClass}" data-id="${h(item.id)}" data-store="${h(store)}"><div class="item-main"><div class="check-circle"></div><div class="item-content"><span class="item-name">${h(item.text)}</span>${meta ? `<div class="item-meta">${meta}</div>` : ''}</div>${editBtn}</div></div>`;
 }
 function attachEvents() {
