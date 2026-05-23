@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#f5f2ec">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
-<title>Handleliste v2.5 - Anledninger</title>
+<title>Handleliste v2.5.1 - Anledninger</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maple-mono@1.0.0/index.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap">
 <style>
@@ -23,6 +23,7 @@
     --hi-andre: #e4daf5; --hi-andre-b: #9070d0;
     --radius: 10px;
   }
+  *, *::before, *::after { box-sizing: border-box; }
 @media screen and (max-width: 768px) and (orientation: landscape) {
   html {
     transform: rotate(-90deg);
@@ -131,9 +132,9 @@
   .empty-state p { font-size: 0.9rem; line-height: 1.6; }
 
   .section-header {
-    font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.7rem;
-    letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
-    padding: 8px 0 4px; border-bottom: 1px solid var(--border); margin-bottom: 3px; margin-top: 14px;
+    font-family: 'Maple Mono', monospace; font-weight: 800; font-size: 0.78rem;
+    letter-spacing: 0.075em; text-transform: uppercase; color: var(--text);
+    padding: 10px 0 5px; border-bottom: 2px solid var(--border); margin-bottom: 4px; margin-top: 16px;
   }
   .section-header.in-vogna { margin-top: 32px; opacity: 0.5; }
 
@@ -185,8 +186,22 @@
   .store-picker-btn.has-meny  { color: var(--meny); }
   .store-picker-btn.has-andre { color: var(--andre); }
 
-  .edit-btn { background: none; border: none; cursor: pointer; color: var(--border); font-size: 0.82rem; padding: 0 4px; flex-shrink: 0; transition: color 0.15s; }
-  .edit-btn:hover { color: var(--muted); }
+  .edit-zone {
+    align-self: stretch; flex: 0 0 30%; min-width: 64px; max-width: 150px;
+    border: none; border-left: 1px solid rgba(15,14,11,0.10);
+    background: rgba(255,255,255,0.34); color: var(--text);
+    cursor: pointer; display: flex; align-items: center; justify-content: flex-end;
+    padding: 0 12px; font-family: 'Maple Mono', monospace; font-weight: 800;
+    font-size: 1rem; transition: background 0.15s, color 0.15s;
+  }
+  .edit-zone:hover { background: rgba(255,255,255,0.62); }
+  .edit-zone .edit-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1px solid rgba(15,14,11,0.18); background: rgba(255,255,255,0.72);
+  }
+  .item-row.highlighted .edit-zone { background: rgba(255,255,255,0.46); border-left-color: rgba(15,14,11,0.12); }
+  .item-row.highlighted .edit-zone:hover { background: rgba(255,255,255,0.75); }
   .place-btn {
     font-size: 0.72rem; padding: 2px 8px; border-radius: 100px;
     border: 1px dashed var(--border); background: transparent; color: var(--muted);
@@ -212,7 +227,7 @@
   /* ── MODALS ── */
   .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: flex-end; justify-content: center; }
   .modal-backdrop.open { display: flex; }
-  .modal { background: var(--surface); border-radius: 16px 16px 0 0; padding: 20px 16px 40px; width: 100%; max-width: 640px; max-height: 80vh; overflow-y: auto; }
+  .modal { background: var(--surface); border-radius: 16px 16px 0 0; padding: 20px 16px 40px; width: 100%; max-width: 640px; max-height: 80vh; overflow-y: auto; overscroll-behavior: contain; }
   .modal-title { font-family: 'Maple Mono', monospace; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
   .modal-subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
   .modal-option {
@@ -278,12 +293,12 @@
   .filter-chip.add { border-style: dashed; }
   .panel-help { color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 12px; }
   .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 0; }
-  .field-label { display:block; font-family:'Maple Mono',monospace; font-weight:700; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin: 8px 0 5px; }
+  .field-label { display:block; font-family:'Maple Mono',monospace; font-weight:800; font-size:0.79rem; text-transform:uppercase; letter-spacing:0.075em; color:var(--text); margin: 12px 0 6px; }
   .text-input, .select-input { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.95rem; outline: none; }
   .text-input:focus, .select-input:focus { border-color: var(--kiwi); }
-  .occasion-card, .context-card, .maintenance-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 8px 0 14px; }
-  .occasion-card h2, .context-card h2, .maintenance-card h2 { margin: 0 0 8px; font-family: 'Maple Mono', monospace; font-size: 1rem; letter-spacing: -0.02em; }
-  .occasion-note { min-height: 74px; margin-bottom: 10px; }
+  .occasion-card, .context-card, .maintenance-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 8px 0 14px; overflow: hidden; }
+  .occasion-card h2, .context-card h2, .maintenance-card h2 { margin: 0 0 10px; font-family: 'Maple Mono', monospace; font-size: 1.08rem; letter-spacing: -0.02em; }
+  .occasion-note { min-height: 74px; margin-bottom: 10px; display: block; }
   .todo-add-row { display:flex; gap: 8px; margin: 8px 0 10px; }
   .todo-add-row input { flex: 1; }
   .small-btn { border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 8px; padding: 7px 10px; font-family: 'Maple Mono', monospace; font-weight: 700; cursor: pointer; }
@@ -411,7 +426,7 @@
       </div>
 
       <div class="panel-section" id="tab-contexts">
-        <p class="panel-help">Kontekster er &quot;neste gang jeg er...&quot;. De er ikke butikker, men situasjoner/steder som kan samle varer paa tvers av butikker.</p>
+        <p class="panel-help">Kontekster er &quot;neste gang jeg er...&quot;. De er ikke butikker, men situasjoner/steder som kan samle varer på tvers av butikker.</p>
         <div class="cat-list" id="contextEditorList"></div>
         <div class="cat-save-row">
           <button class="cat-add-btn" onclick="addContextFromSettings()">+ Ny kontekst</button>
@@ -652,7 +667,7 @@ function normalizeState() {
 
 // SUPABASE EDGE FUNCTION FLOW
 async function createRoom() {
-  if (currentRoomCode && !confirm('Lag et nytt rom? Du mister tilgang til det naa-vaerende.')) return;
+  if (currentRoomCode && !confirm('Lag et nytt rom? Du mister tilgang til det nåværende.')) return;
   const tokenBytes = new Uint8Array(32);
   crypto.getRandomValues(tokenBytes);
   const token = Array.from(tokenBytes).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -692,7 +707,7 @@ async function joinRoom() {
     if (shownFromCache && localDirtySinceLoad) { await saveToCloud(); return; }
     await enterRoom(token, result.data);
   } catch (e) {
-    if (!shownFromCache) alert('Tilkoblingsfeil. Proev igjen.');
+    if (!shownFromCache) alert('Tilkoblingsfeil. Prøv igjen.');
     setSyncStatus('error');
   }
 }
@@ -899,9 +914,9 @@ function renderOccasionFilterBar() {
   html += `<button class="filter-chip add" onclick="createOccasionPrompt()">+ Anledning</button>`;
   bar.innerHTML = html;
 }
-function setOccasionFilter(id) { currentOccasionFilter = id || null; renderList(); }
+function setOccasionFilter(id) { currentOccasionFilter = (id && currentOccasionFilter !== id) ? id : null; renderList(); }
 function createOccasionPrompt() {
-  const name = prompt('Navn paa anledning, f.eks. 17. mai eller Jul');
+  const name = prompt('Navn på anledning, f.eks. 17. mai eller Jul');
   if (!name || !name.trim()) return;
   const o = { id: genId(), name: name.trim(), notes: '', sortOrder: occasions.length, archived: false, createdAt: nowIso() };
   occasions.push(o);
@@ -917,8 +932,8 @@ function renderOccasionEditor() {
   const el = document.getElementById('occasionEditorList');
   if (!el) return;
   const sorted = activeOccasions();
-  if (!sorted.length) { el.innerHTML = '<p class="panel-help">Ingen anledninger ennaa.</p>'; return; }
-  el.innerHTML = sorted.map((o, i) => `<div class="cat-row"><span style="color:var(--muted);font-size:0.78rem;min-width:16px">${i+1}</span><input class="cat-name-input" value="${h(o.name)}" data-id="${h(o.id)}"><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',-1)">^</button><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',1)">v</button><button class="cat-delete-btn" onclick="deleteOccasion('${h(o.id)}')">x</button></div>`).join('');
+  if (!sorted.length) { el.innerHTML = '<p class="panel-help">Ingen anledninger ennå.</p>'; return; }
+  el.innerHTML = sorted.map((o, i) => `<div class="cat-row"><span style="color:var(--muted);font-size:0.78rem;min-width:16px">${i+1}</span><input class="cat-name-input" value="${h(o.name)}" data-id="${h(o.id)}"><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',-1)">▲</button><button class="tiny-btn" onclick="moveOccasion('${h(o.id)}',1)">▼</button><button class="cat-delete-btn" onclick="deleteOccasion('${h(o.id)}')">×</button></div>`).join('');
 }
 function saveOccasions() {
   document.querySelectorAll('#occasionEditorList .cat-name-input').forEach(input => { const o = getOccasion(input.dataset.id); if (o) o.name = input.value.trim() || o.name; });
@@ -964,8 +979,8 @@ function renderContextEditor() {
   const el = document.getElementById('contextEditorList');
   if (!el) return;
   const sorted = activeContexts();
-  if (!sorted.length) { el.innerHTML = '<p class="panel-help">Ingen kontekster ennaa. Eksempel: Kvadrat, Clas Ohlson, Hjemme, PC.</p>'; return; }
-  el.innerHTML = sorted.map((c, i) => `<div class="cat-row"><span style="color:var(--muted);font-size:0.78rem;min-width:16px">${i+1}</span><input class="cat-name-input" value="${h(c.name)}" data-id="${h(c.id)}"><button class="tiny-btn" onclick="moveContext('${h(c.id)}',-1)">^</button><button class="tiny-btn" onclick="moveContext('${h(c.id)}',1)">v</button><button class="cat-delete-btn" onclick="deleteContext('${h(c.id)}')">x</button></div>`).join('');
+  if (!sorted.length) { el.innerHTML = '<p class="panel-help">Ingen kontekster ennå. Eksempel: Kvadrat, Clas Ohlson, Hjemme, PC.</p>'; return; }
+  el.innerHTML = sorted.map((c, i) => `<div class="cat-row"><span style="color:var(--muted);font-size:0.78rem;min-width:16px">${i+1}</span><input class="cat-name-input" value="${h(c.name)}" data-id="${h(c.id)}"><button class="tiny-btn" onclick="moveContext('${h(c.id)}',-1)">▲</button><button class="tiny-btn" onclick="moveContext('${h(c.id)}',1)">▼</button><button class="cat-delete-btn" onclick="deleteContext('${h(c.id)}')">×</button></div>`).join('');
 }
 function saveContexts() { document.querySelectorAll('#contextEditorList .cat-name-input').forEach(input => { const c = getContext(input.dataset.id); if (c) c.name = input.value.trim() || c.name; }); closePanel(); renderList(); scheduleSave(); }
 function moveContext(id, dir) {
@@ -990,7 +1005,10 @@ function rememberPlacement(item) {
   if (!key) return;
   preferences.itemPlacements[key] = { store: item.store, kiwiSection: item.kiwiSection || null, andreSection: item.andreSection || null, updatedAt: nowIso() };
 }
-function getScopedItems() { return listItems.filter(item => !currentOccasionFilter || item.occasionId === currentOccasionFilter); }
+function getScopedItems() {
+  if (currentOccasionFilter) return listItems.filter(item => item.occasionId === currentOccasionFilter);
+  return listItems.filter(item => !item.occasionId);
+}
 function renderList() {
   const start = performance.now();
   normalizeState();
@@ -999,19 +1017,33 @@ function renderList() {
   const bottomBar = document.getElementById('bottomBar');
   if (!container) return;
   const scoped = getScopedItems();
-  bottomBar.style.display = listItems.some(i => i.checked) ? 'flex' : 'none';
+  bottomBar.style.display = scoped.some(i => i.checked) ? 'flex' : 'none';
   if (currentStore === 'context') renderContextView(container, scoped);
   else if (currentStore === 'andre') renderAndre(container, scoped);
   else renderGrocery(container, scoped);
   markPerf('Render', Math.round(performance.now() - start) + ' ms');
 }
+function hasOccasionItems(occasionId) { return listItems.some(i => i.occasionId === occasionId); }
+function primaryEmptyText() {
+  return listItems.some(i => i.occasionId)
+    ? 'Ingen varer i primærlisten. Velg en anledning for å vise anledningsvarer.'
+    : 'Trykk <strong>+</strong> for å legge til varer.';
+}
+function occasionEmptyText() {
+  return 'Ingen varer er knyttet til denne anledningen ennå.<br>For å knytte en vare til en anledning, rediger varen i handlelisten.';
+}
+function storeOccasionEmptyText() {
+  if (currentOccasionFilter && !hasOccasionItems(currentOccasionFilter)) return occasionEmptyText();
+  return 'Ingen matvarer i denne butikkvisningen for anledningen.';
+}
+
 function renderOccasionHeader() {
   if (!currentOccasionFilter) return '';
   const o = getOccasion(currentOccasionFilter);
   if (!o) return '';
   const todos = occasionTodos.filter(t => t.occasionId === o.id).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
-  const rows = todos.map(t => `<div class="todo-row ${t.checked?'done':''}"><button class="todo-check" onclick="toggleOccasionTodo('${h(t.id)}')"></button><span class="todo-text">${h(t.text)}</span><span class="todo-actions"><button class="tiny-btn" onclick="moveOccasionTodo('${h(t.id)}',-1)">^</button><button class="tiny-btn" onclick="moveOccasionTodo('${h(t.id)}',1)">v</button><button class="tiny-btn" onclick="deleteOccasionTodo('${h(t.id)}')">x</button></span></div>`).join('');
-  return `<div class="occasion-card"><h2>${h(o.name)}</h2><label class="field-label">Notater</label><textarea class="occasion-note" placeholder="Notater for anledningen..." oninput="updateOccasionNotes('${h(o.id)}', this.value)">${h(o.notes || '')}</textarea><label class="field-label">Todo uten frist</label><div class="todo-add-row"><input class="text-input" id="newTodo-${h(o.id)}" placeholder="Ny todo..." onkeydown="if(event.key==='Enter'){addOccasionTodo('${h(o.id)}')}"><button class="small-btn" onclick="addOccasionTodo('${h(o.id)}')">Legg til</button></div>${rows || '<p class="panel-help">Ingen todoer her ennaa.</p>'}</div>`;
+  const rows = todos.map(t => `<div class="todo-row ${t.checked?'done':''}"><button class="todo-check" onclick="toggleOccasionTodo('${h(t.id)}')"></button><span class="todo-text">${h(t.text)}</span><span class="todo-actions"><button class="tiny-btn" onclick="moveOccasionTodo('${h(t.id)}',-1)">▲</button><button class="tiny-btn" onclick="moveOccasionTodo('${h(t.id)}',1)">▼</button><button class="tiny-btn" onclick="deleteOccasionTodo('${h(t.id)}')">×</button></span></div>`).join('');
+  return `<div class="occasion-card"><h2>${h(o.name)}</h2><label class="field-label">NOTATER</label><textarea class="occasion-note" placeholder="Notater for anledningen..." oninput="updateOccasionNotes('${h(o.id)}', this.value)">${h(o.notes || '')}</textarea><label class="field-label">TODO UTEN FRIST</label><div class="todo-add-row"><input class="text-input" id="newTodo-${h(o.id)}" placeholder="Ny todo..." onkeydown="if(event.key==='Enter'){addOccasionTodo('${h(o.id)}')}"><button class="small-btn" onclick="addOccasionTodo('${h(o.id)}')">Legg til</button></div>${rows || '<p class="panel-help">Ingen todoer her ennå.</p>'}</div>`;
 }
 function renderGrocery(container, items) {
   const sections = {}, unknown = [], vogna = [];
@@ -1033,8 +1065,8 @@ function renderGrocery(container, items) {
   });
   if (unknown.length) { listHtml += '<div class="section-header">Ukjent plassering</div>'; unknown.forEach(item => listHtml += renderItem(item, currentStore)); }
   if (vogna.length) { listHtml += '<div class="section-header in-vogna">Vogna</div>'; vogna.forEach(item => listHtml += renderItem(item, currentStore, true)); }
-  if (!listHtml && !currentOccasionFilter) listHtml = '<div class="empty-state"><div class="emoji">&#128722;</div><p>Trykk <strong>+</strong> for aa legge til varer.</p></div>';
-  if (!listHtml && currentOccasionFilter) listHtml = '<div class="empty-state"><p>Ingen matvarer i denne butikkvisningen for anledningen.</p></div>';
+  if (!listHtml && !currentOccasionFilter) listHtml = `<div class="empty-state"><div class="emoji">&#128722;</div><p>${primaryEmptyText()}</p></div>`;
+  if (!listHtml && currentOccasionFilter) listHtml = `<div class="empty-state"><p>${storeOccasionEmptyText()}</p></div>`;
   container.innerHTML = html + listHtml;
   attachEvents();
 }
@@ -1054,12 +1086,12 @@ function renderAndre(container, items) {
   andreSections.forEach(sec => {
     const sectionItems = sections[sec.id]; if (!sectionItems || !sectionItems.length) return;
     const collapsed = collapsedSections.has(sec.id);
-    listHtml += `<div class="section-header andre-collapsible" onclick="toggleAndreSection('${h(sec.id)}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;"><span>${h(sec.label)} <span style="font-weight:400;opacity:0.6">&middot; ${sectionItems.length}</span></span><span style="font-size:0.7rem">${collapsed ? '>' : 'v'}</span></div>`;
+    listHtml += `<div class="section-header andre-collapsible" onclick="toggleAndreSection('${h(sec.id)}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;"><span>${h(sec.label)} <span style="font-weight:400;opacity:0.6">&middot; ${sectionItems.length}</span></span><span style="font-size:0.7rem">${collapsed ? '▶' : '▼'}</span></div>`;
     if (!collapsed) sectionItems.forEach(item => listHtml += renderItem(item, 'andre'));
   });
   if (unknown.length) { listHtml += '<div class="section-header">Ikke plassert</div>'; unknown.forEach(item => listHtml += renderItem(item, 'andre')); }
   if (vogna.length) { listHtml += '<div class="section-header in-vogna">Vogna</div>'; vogna.forEach(item => listHtml += renderItem(item, 'andre', true)); }
-  if (!listHtml) listHtml = '<div class="empty-state"><div class="emoji">&#127970;</div><p>Ingen varer lagt til for Andre butikker her.</p></div>';
+  if (!listHtml) listHtml = currentOccasionFilter ? `<div class="empty-state"><p>${storeOccasionEmptyText()}</p></div>` : '<div class="empty-state"><div class="emoji">&#127970;</div><p>Ingen varer lagt til for Andre butikker her.</p></div>';
   container.innerHTML = html + listHtml;
   attachEvents();
 }
@@ -1073,7 +1105,12 @@ function renderContextView(container, items) {
     ctxItems.forEach(item => listHtml += renderItem(item, item.store === 'andre' ? 'andre' : currentStore));
     listHtml += '</div>';
   });
-  if (!listHtml) listHtml = '<div class="empty-state"><div class="emoji">&#128205;</div><p>Ingen varer er koblet til en kontekst ennaa.</p></div>';
+  if (!listHtml) {
+    const msg = currentOccasionFilter
+      ? (hasOccasionItems(currentOccasionFilter) ? 'Ingen varer i denne anledningen er knyttet til en kontekst ennå.<br>For å knytte en vare til en kontekst, rediger varen i handlelisten.' : occasionEmptyText())
+      : 'Ingen varer er knyttet til en kontekst ennå.<br>For å knytte en vare til en kontekst, rediger varen i handlelisten.';
+    listHtml = `<div class="empty-state"><div class="emoji">&#128205;</div><p>${msg}</p></div>`;
+  }
   container.innerHTML = html + listHtml;
   attachEvents();
 }
@@ -1083,13 +1120,13 @@ function renderItem(item, store, inVogna = false) {
   const occ = item.occasionId ? getOccasion(item.occasionId) : null;
   const ctx = item.contextId ? getContext(item.contextId) : null;
   const meta = `${occ && !currentOccasionFilter ? `<span class="item-pill">${h(occ.name)}</span>` : ''}${ctx ? `<span class="item-pill">${h(ctx.name)}</span>` : ''}`;
-  const editBtn = !inVogna ? `<button class="edit-btn" onclick="event.stopPropagation();openItemDrawer('${h(item.id)}')">edit</button>` : '';
+  const editBtn = !inVogna ? `<button class="edit-zone" aria-label="Rediger ${h(item.text)}" onclick="event.stopPropagation();openItemDrawer('${h(item.id)}')"><span class="edit-icon">✎</span></button>` : '';
   return `<div class="item-row ${highlight} ${vognaClass}" data-id="${h(item.id)}" data-store="${h(store)}"><div class="item-main"><div class="check-circle"></div><div class="item-content"><span class="item-name">${h(item.text)}</span>${meta ? `<div class="item-meta">${meta}</div>` : ''}</div>${editBtn}</div></div>`;
 }
 function attachEvents() {
   document.querySelectorAll('.item-main').forEach(main => {
     main.addEventListener('click', e => {
-      if (e.target.classList.contains('edit-btn')) return;
+      if (e.target.closest('.edit-zone')) return;
       const row = main.closest('.item-row');
       const item = listItems.find(i => i.id === row.dataset.id);
       if (item) { item.checked = !item.checked; renderList(); scheduleSave(); }
@@ -1108,11 +1145,15 @@ function openItemDrawer(itemId) {
   document.getElementById('itemMetaSection').innerHTML = `<div class="meta-grid"><label><span class="field-label">Anledning</span><select class="select-input" id="itemOccasionSelect">${renderOccasionOptions(item.occasionId || '', 'Ingen anledning')}</select></label><label><span class="field-label">Kontekst</span><select class="select-input" id="itemContextSelect">${renderContextOptions(item.contextId || '', 'Ingen kontekst')}</select></label></div>`;
   renderStorePicker(item);
   renderSectionOptions(item);
-  document.getElementById('sectionModal').classList.add('open');
+  const modalBackdrop = document.getElementById('sectionModal');
+  const modal = modalBackdrop.querySelector('.modal');
+  if (modal) modal.scrollTop = 0;
+  modalBackdrop.classList.add('open');
+  requestAnimationFrame(() => { if (modal) modal.scrollTop = 0; });
 }
 function renderStorePicker(item) {
   const stores = [{id:'kiwi',label:'Kiwi',color:'#1e7a2e'},{id:'rema',label:'Rema',color:'#002070'},{id:'meny',label:'Mega/Meny',color:'#d46000'},{id:'andre',label:'Andre',color:'#6040b0'}];
-  document.getElementById('storePickerSection').innerHTML = `<div class="field-label">Hvilken butikk?</div>` + stores.map(s => `<button onclick="setItemStore('${h(item.id)}','${s.id}')" style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:5px;border-radius:8px;border:1px solid ${item.store===s.id?s.color:'#d4cabf'};background:${item.store===s.id?s.color+'18':'transparent'};font-family:'DM Sans',sans-serif;font-size:0.9rem;cursor:pointer;color:#0f0e0b;font-weight:${item.store===s.id?'600':'400'}">${h(s.label)}${item.store===s.id?' ok':''}</button>`).join('');
+  document.getElementById('storePickerSection').innerHTML = `<div class="field-label">Hvilken butikk?</div>` + stores.map(s => `<button onclick="setItemStore('${h(item.id)}','${s.id}')" style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:5px;border-radius:8px;border:1px solid ${item.store===s.id?s.color:'#d4cabf'};background:${item.store===s.id?s.color+'18':'transparent'};font-family:'DM Sans',sans-serif;font-size:0.9rem;cursor:pointer;color:#0f0e0b;font-weight:${item.store===s.id?'600':'400'}">${h(s.label)}${item.store===s.id?' ✓':''}</button>`).join('');
 }
 function renderSectionOptions(item) {
   const isAndre = item.store === 'andre';
@@ -1120,10 +1161,10 @@ function renderSectionOptions(item) {
   const saved = getSavedPlacement(item.text);
   const curSection = isAndre ? (item.andreSection || saved?.andreSection || null) : (item.kiwiSection || saved?.kiwiSection || null);
   let html = `<div class="field-label">${isAndre ? 'Hvilken butikk under Andre?' : 'Plassering i butikk'}</div>`;
-  html += `<button class="section-option" onclick="assignItemSection('')">Ingen / ukjent${!curSection?' ok':''}</button>`;
+  html += `<button class="section-option" onclick="assignItemSection('')">Ingen / ukjent${!curSection?' ✓':''}</button>`;
   html += sections.map((sec, i) => {
     const active = curSection === sec.id;
-    return `<button class="section-option" onclick="assignItemSection('${h(sec.id)}')" style="${active?'border-color:#1e7a2e;background:#1e7a2e18;font-weight:600;':''}">${isAndre?h(sec.label):i+' &middot; '+h(sec.label)}${active?' ok':''}</button>`;
+    return `<button class="section-option" onclick="assignItemSection('${h(sec.id)}')" style="${active?'border-color:#1e7a2e;background:#1e7a2e18;font-weight:600;':''}">${isAndre?h(sec.label):i+' &middot; '+h(sec.label)}${active?' ✓':''}</button>`;
   }).join('');
   document.getElementById('sectionOptions').innerHTML = html;
 }
@@ -1162,7 +1203,7 @@ function renderCatEditor(type) {
   const sections = type === 'andre' ? andreSections : kiwiSections;
   const listId = type === 'andre' ? 'andreCatList' : 'kiwiCatList';
   const list = document.getElementById(listId);
-  list.innerHTML = sections.map((sec, i) => `<div class="cat-row" data-idx="${i}" data-type="${type}"><div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;"><button class="cat-move-btn" onclick="moveCat(${i},-1,'${type}')" ${i===0?'disabled':''}>^</button><button class="cat-move-btn" onclick="moveCat(${i},1,'${type}')" ${i===sections.length-1?'disabled':''}>v</button></div><span style="color:var(--muted);font-size:0.78rem;flex-shrink:0;min-width:16px">${i}</span><input class="cat-name-input" value="${h(sec.label)}" data-idx="${i}" data-type="${type}" onchange="getSections('${type}')[${i}].label=this.value"><button class="cat-delete-btn" onclick="deleteCat(${i},'${type}')">x</button></div>`).join('');
+  list.innerHTML = sections.map((sec, i) => `<div class="cat-row" data-idx="${i}" data-type="${type}"><div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;"><button class="cat-move-btn" onclick="moveCat(${i},-1,'${type}')" ${i===0?'disabled':''}>▲</button><button class="cat-move-btn" onclick="moveCat(${i},1,'${type}')" ${i===sections.length-1?'disabled':''}>▼</button></div><span style="color:var(--muted);font-size:0.78rem;flex-shrink:0;min-width:16px">${i}</span><input class="cat-name-input" value="${h(sec.label)}" data-idx="${i}" data-type="${type}" onchange="getSections('${type}')[${i}].label=this.value"><button class="cat-delete-btn" onclick="deleteCat(${i},'${type}')">×</button></div>`).join('');
 }
 function moveCat(idx, dir, type) { const sections = getSections(type); const newIdx = idx + dir; if (newIdx < 0 || newIdx >= sections.length) return; const moved = sections.splice(idx, 1)[0]; sections.splice(newIdx, 0, moved); renderCatEditor(type); }
 function getSections(type) { return type === 'andre' ? andreSections : kiwiSections; }
@@ -1175,7 +1216,13 @@ function dragDrop(e, idx, type) { e.preventDefault(); if (dragSrcIdx === null ||
 function dragEnd(type) { dragSrcIdx = null; }
 
 // MAINTENANCE / EXPORT
-function toemVogna() { listItems = listItems.filter(i => !i.checked); renderList(); scheduleSave(); }
+function toemVogna() {
+  listItems = listItems.filter(i => {
+    if (!i.checked) return true;
+    return currentOccasionFilter ? i.occasionId !== currentOccasionFilter : !!i.occasionId;
+  });
+  renderList(); scheduleSave();
+}
 function nyHandel() { document.getElementById('confirmModal').classList.remove('open'); listItems = []; renderList(); scheduleSave(); }
 function renderMaintenance() {
   const el = document.getElementById('maintenancePanel');
@@ -1183,11 +1230,11 @@ function renderMaintenance() {
   const placements = Object.entries(preferences.itemPlacements || {}).sort(([a],[b]) => a.localeCompare(b));
   const filtered = placements.filter(([key]) => key.includes(placementSearch.toLowerCase().trim())).slice(0, 80);
   const dataSize = bytesOf(JSON.stringify({ items: listItems, occasions, occasionTodos, contexts, categories: { kiwi: kiwiSections, andre: andreSections }, preferences }));
-  el.innerHTML = `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.length}</strong><span>anledninger</span></div><div class="metric"><strong>${occasionTodos.length}</strong><span>todoer</span></div><div class="metric"><strong>${placements.length}</strong><span>laerte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div><div class="metric"><strong>${contexts.length}</strong><span>kontekster</span></div></div><p class="panel-help">Desktop-vedlikehold for aa rydde feil i laerte plasseringer og se om payloaden er blitt stor.</p></div><div class="maintenance-card"><h2>Laerte plasseringer</h2><input class="text-input" placeholder="Soek..." value="${h(placementSearch)}" oninput="placementSearch=this.value;renderMaintenance()"><div style="margin-top:10px">${filtered.map(([key, p]) => `<div class="placement-row"><div><strong>${h(key)}</strong><div class="placement-meta">${h(p.store || '-')}${p.kiwiSection?' / '+h(p.kiwiSection):''}${p.andreSection?' / '+h(p.andreSection):''}</div></div><button class="tiny-btn" onclick="deletePlacement('${h(key)}')">Slett</button></div>`).join('') || '<p class="panel-help">Ingen treff.</p>'}</div><div class="panel-actions"><button class="action-btn secondary" onclick="pruneBrokenPlacements()">Rydd tomme</button><button class="action-btn secondary" onclick="clearAllPlacements()">Slett alle</button></div></div><div class="maintenance-card"><h2>Ytelseslogg</h2>${perfLog.map(p => `<div class="placement-row"><div><strong>${h(p.label)}</strong><div class="placement-meta">${h(p.at)} ${h(p.extra)}</div></div></div>`).join('') || '<p class="panel-help">Ingen maalinger ennaa.</p>'}</div>`;
+  el.innerHTML = `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.length}</strong><span>anledninger</span></div><div class="metric"><strong>${occasionTodos.length}</strong><span>todoer</span></div><div class="metric"><strong>${placements.length}</strong><span>lærte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div><div class="metric"><strong>${contexts.length}</strong><span>kontekster</span></div></div><p class="panel-help">Desktop-vedlikehold for å rydde feil i lærte plasseringer og se om payloaden er blitt stor.</p></div><div class="maintenance-card"><h2>Lærte plasseringer</h2><input class="text-input" placeholder="Søk..." value="${h(placementSearch)}" oninput="placementSearch=this.value;renderMaintenance()"><div style="margin-top:10px">${filtered.map(([key, p]) => `<div class="placement-row"><div><strong>${h(key)}</strong><div class="placement-meta">${h(p.store || '-')}${p.kiwiSection?' / '+h(p.kiwiSection):''}${p.andreSection?' / '+h(p.andreSection):''}</div></div><button class="tiny-btn" onclick="deletePlacement('${h(key)}')">Slett</button></div>`).join('') || '<p class="panel-help">Ingen treff.</p>'}</div><div class="panel-actions"><button class="action-btn secondary" onclick="pruneBrokenPlacements()">Rydd tomme</button><button class="action-btn secondary" onclick="clearAllPlacements()">Slett alle</button></div></div><div class="maintenance-card"><h2>Ytelseslogg</h2>${perfLog.map(p => `<div class="placement-row"><div><strong>${h(p.label)}</strong><div class="placement-meta">${h(p.at)} ${h(p.extra)}</div></div></div>`).join('') || '<p class="panel-help">Ingen målinger ennå.</p>'}</div>`;
 }
 function deletePlacement(key) { delete preferences.itemPlacements[key]; renderMaintenance(); scheduleSave(); }
 function pruneBrokenPlacements() { let count = 0; Object.keys(preferences.itemPlacements || {}).forEach(key => { const p = preferences.itemPlacements[key] || {}; if (!p.store && !p.kiwiSection && !p.andreSection) { delete preferences.itemPlacements[key]; count++; } }); alert('Ryddet ' + count + ' tomme plasseringer.'); renderMaintenance(); scheduleSave(); }
-function clearAllPlacements() { if (!confirm('Slette alle laerte plasseringer?')) return; preferences.itemPlacements = {}; renderMaintenance(); renderList(); scheduleSave(); }
+function clearAllPlacements() { if (!confirm('Slette alle lærte plasseringer?')) return; preferences.itemPlacements = {}; renderMaintenance(); renderList(); scheduleSave(); }
 function doExport() { document.getElementById('exportText').value = JSON.stringify({ items: listItems, occasions, occasionTodos, contexts, kiwi: kiwiSections, andre: andreSections, preferences }, null, 2); }
 function copyExport() { if (!document.getElementById('exportText').value) doExport(); const ta = document.getElementById('exportText'); ta.select(); document.execCommand('copy'); const btn = document.querySelector('#tab-export .action-btn.secondary'); const old = btn.textContent; btn.textContent = 'Kopiert'; setTimeout(() => btn.textContent = old, 2000); }
 function doImport() { try { const p = JSON.parse(document.getElementById('importText').value.trim()); if (p.items) listItems = p.items; if (p.occasions) occasions = p.occasions; if (p.occasionTodos) occasionTodos = p.occasionTodos; if (p.contexts) contexts = p.contexts; if (p.kiwi) kiwiSections.splice(0, kiwiSections.length, ...p.kiwi); if (p.andre) andreSections.splice(0, andreSections.length, ...p.andre); if (p.preferences) preferences = p.preferences; normalizeState(); document.getElementById('importText').value = ''; closePanel(); renderList(); scheduleSave(); } catch(e) { alert('Feil format.'); } }
