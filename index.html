@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#f5f2ec">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
-<title>Handleliste v2.5.2 - N-fane</title>
+<title>Handleliste v2.5.3 - implisitte anledninger</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maple-mono@1.0.0/index.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap">
 <style>
@@ -294,6 +294,7 @@
   .occasion-name-input { flex: 1; min-width: 0; }
   .panel-help { color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 12px; }
   .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 0; }
+  .meta-grid.single { grid-template-columns: 1fr; }
   .field-label { display:block; font-family:'Maple Mono',monospace; font-weight:800; font-size:0.79rem; text-transform:uppercase; letter-spacing:0.075em; color:var(--text); margin: 12px 0 6px; }
   .text-input, .select-input { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.95rem; outline: none; }
   .text-input:focus, .select-input:focus { border-color: var(--kiwi); }
@@ -923,7 +924,14 @@ function renderAddPanel() {
     </div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       ${stores.map(s => `<button onclick="selectAddStore('${s.id}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addStore===s.id?s.color:'#e0d9ce'};background:${addStore===s.id?s.color:'transparent'};color:${addStore===s.id?'white':'#8a8070'};font-family:'Maple Mono',monospace;font-weight:600;font-size:0.8rem;cursor:pointer;">${h(s.label)}</button>`).join('')}
     </div>`;
-  if (meta) meta.innerHTML = `<div class="meta-grid"><label><span class="field-label">Anledning</span><select class="select-input" onchange="addOccasionId=this.value||null">${renderOccasionOptions(addOccasionId, 'Ingen anledning')}</select></label><label><span class="field-label">Kontekst</span><select class="select-input" onchange="addContextId=this.value||null">${renderContextOptions(addContextId, 'Ingen kontekst')}</select></label></div>`;
+  if (meta) {
+    const metaParts = [];
+    if (activeOccasions().length) metaParts.push(`<label><span class="field-label">Anledning</span><select class="select-input" onchange="addOccasionId=this.value||null">${renderOccasionOptions(addOccasionId, 'Ingen anledning')}</select></label>`);
+    else addOccasionId = null;
+    if (activeContexts().length) metaParts.push(`<label><span class="field-label">Kontekst</span><select class="select-input" onchange="addContextId=this.value||null">${renderContextOptions(addContextId, 'Ingen kontekst')}</select></label>`);
+    else addContextId = null;
+    meta.innerHTML = metaParts.length ? `<div class="meta-grid ${metaParts.length === 1 ? 'single' : ''}">${metaParts.join('')}</div>` : '';
+  }
 }
 function selectAddGroup(group) {
   addGroup = group;
@@ -938,8 +946,10 @@ function addItems() {
   if (!raw) { closePanel(); return; }
   const storeValue = addGroup === 'andre' ? 'andre' : addStore;
   const andreSection = addGroup === 'andre' ? addStore : null;
+  const validAddOccasionId = getOccasion(addOccasionId) ? addOccasionId : null;
+  const validAddContextId = getContext(addContextId) ? addContextId : null;
   raw.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
-    listItems.push({ id: genId(), text: line, store: storeValue, kiwiSection: null, andreSection, checked: false, occasionId: addOccasionId || null, contextId: addContextId || null, createdAt: nowIso() });
+    listItems.push({ id: genId(), text: line, store: storeValue, kiwiSection: null, andreSection, checked: false, occasionId: validAddOccasionId, contextId: validAddContextId, createdAt: nowIso() });
   });
   textarea.value = '';
   closePanel();
@@ -957,11 +967,12 @@ function renderContextOptions(selectedId, emptyLabel) {
 function renderOccasionFilterBar() {
   const bar = document.getElementById('occasionFilterBar');
   if (!bar) return;
-  const visible = currentStore !== 'context' && activeOccasions().length > 0;
+  const occs = activeOccasions();
+  const visible = currentStore !== 'context' && occs.length > 0;
   bar.style.display = visible ? 'flex' : 'none';
   if (!visible) { bar.innerHTML = ''; return; }
-  let html = `<button class="filter-chip base ${!hasActiveOccasionFilters()?'active':''}" onclick="setOccasionFilter(null)" aria-pressed="${!hasActiveOccasionFilters()}">Hverdag</button>`;
-  activeOccasions().forEach(o => {
+  let html = '';
+  occs.forEach(o => {
     const active = activeOccasionFilters.has(o.id);
     html += `<button class="filter-chip ${active?'active':''}" onclick="setOccasionFilter('${h(o.id)}')" aria-pressed="${active}">${active?'✓ ':''}${h(occasionLabel(o))}</button>`;
   });
@@ -1124,7 +1135,7 @@ function renderList() {
 function hasOccasionItems(occasionId) { return listItems.some(i => i.occasionId === occasionId); }
 function primaryEmptyText() {
   return listItems.some(i => i.occasionId)
-    ? 'Ingen varer i Hverdag. Velg én eller flere anledninger over for å toggle inn anledningsvarer.'
+    ? 'Ingen vanlige varer i denne butikkvisningen. Trykk på en anledning over for å vise anledningsvarer.'
     : 'Trykk <strong>+</strong> for å legge til varer.';
 }
 function occasionEmptyText() {
@@ -1134,7 +1145,7 @@ function storeOccasionEmptyText() {
   const chosen = selectedOccasions();
   if (chosen.length === 1 && !hasOccasionItems(chosen[0].id)) return occasionEmptyText();
   const names = chosen.map(o => h(occasionLabel(o))).join(', ');
-  return 'Ingen Hverdag-varer' + (names ? ' eller varer fra ' + names : '') + ' i denne butikkvisningen.';
+  return 'Ingen vanlige varer' + (names ? ' eller varer fra ' + names : '') + ' i denne butikkvisningen.';
 }
 function renderGrocery(container, items) {
   const sections = {}, unknown = [], vogna = [];
@@ -1221,8 +1232,8 @@ function renderContextManagementCard(c) {
 function renderNextView(container) {
   const occs = activeOccasions();
   const ctxs = activeContexts();
-  let html = `<div class="occasion-card"><div class="next-section-title"><h2>Anledninger</h2></div><p class="panel-help">Her oppretter og redigerer du anledninger, notater, todoer og emoji. I K/R/M/A kan du trykke på én eller flere anledninger over listen for å toggle disse varene inn sammen med Hverdag-listen.</p><div class="todo-add-row"><input class="text-input occasion-emoji-input" id="newOccasionEmoji" placeholder="☀️" aria-label="Emoji"><input class="text-input occasion-name-input" id="newOccasionName" placeholder="Ny anledning, f.eks. Sommer" onkeydown="if(event.key==='Enter'){addOccasionFromNext()}"><button class="small-btn" onclick="addOccasionFromNext()">+ Ny</button></div></div>`;
-  html += occs.length ? occs.map(renderOccasionManagementCard).join('') : '<div class="empty-state"><p>Ingen anledninger ennå.</p></div>';
+  let html = `<div class="occasion-card"><div class="next-section-title"><h2>Anledninger</h2></div><p class="panel-help">Her oppretter og redigerer du anledninger, notater, todoer og emoji. I K/R/M/A vises vanlige varer alltid. Trykk på én eller flere anledninger over listen for å vise disse varene i tillegg.</p><div class="todo-add-row"><input class="text-input occasion-emoji-input" id="newOccasionEmoji" placeholder="☀️" aria-label="Emoji"><input class="text-input occasion-name-input" id="newOccasionName" placeholder="Ny anledning, f.eks. Sommer" onkeydown="if(event.key==='Enter'){addOccasionFromNext()}"><button class="small-btn" onclick="addOccasionFromNext()">+ Ny</button></div></div>`;
+  html += occs.length ? occs.map(renderOccasionManagementCard).join('') : '<div class="empty-state"><p>Ingen anledninger ennå.<br>Opprett en anledning her, så dukker den opp som en toggle over K/R/M/A-listene.</p></div>';
   html += `<div class="soft-divider"></div><div class="context-card"><div class="next-section-title"><h2>Kontekster</h2></div><p class="panel-help">Kontekster er «neste gang jeg er ...». De kan samle varer på tvers av butikker, for eksempel Kvadrat, Clas Ohlson, Hjemme eller PC.</p><div class="todo-add-row"><input class="text-input" id="newContextName" placeholder="Ny kontekst, f.eks. Kvadrat" onkeydown="if(event.key==='Enter'){addContextFromNext()}"><button class="small-btn" onclick="addContextFromNext()">+ Ny</button></div></div>`;
   html += ctxs.length ? ctxs.map(renderContextManagementCard).join('') : '<div class="empty-state"><p>Ingen kontekster ennå.</p></div>';
   container.innerHTML = html;
@@ -1255,7 +1266,10 @@ function openItemDrawer(itemId) {
   if (!item) return;
   document.getElementById('sectionModalTitle').textContent = 'Rediger vare';
   document.getElementById('itemNameInput').value = item.text;
-  document.getElementById('itemMetaSection').innerHTML = `<div class="meta-grid"><label><span class="field-label">Anledning</span><select class="select-input" id="itemOccasionSelect">${renderOccasionOptions(item.occasionId || '', 'Ingen anledning')}</select></label><label><span class="field-label">Kontekst</span><select class="select-input" id="itemContextSelect">${renderContextOptions(item.contextId || '', 'Ingen kontekst')}</select></label></div>`;
+  const metaParts = [];
+  if (activeOccasions().length || item.occasionId) metaParts.push(`<label><span class="field-label">Anledning</span><select class="select-input" id="itemOccasionSelect">${renderOccasionOptions(item.occasionId || '', 'Ingen anledning')}</select></label>`);
+  if (activeContexts().length || item.contextId) metaParts.push(`<label><span class="field-label">Kontekst</span><select class="select-input" id="itemContextSelect">${renderContextOptions(item.contextId || '', 'Ingen kontekst')}</select></label>`);
+  document.getElementById('itemMetaSection').innerHTML = metaParts.length ? `<div class="meta-grid ${metaParts.length === 1 ? 'single' : ''}">${metaParts.join('')}</div>` : '';
   renderStorePicker(item);
   renderSectionOptions(item);
   const modalBackdrop = document.getElementById('sectionModal');
