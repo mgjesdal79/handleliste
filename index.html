@@ -1187,10 +1187,11 @@ function openItemDrawer(itemId) {
   requestAnimationFrame(() => { if (modal) modal.scrollTop = 0; });
 }
 function renderStorePicker(item) {
-  const stores = [{id:'kiwi',label:'Kiwi',color:'#1e7a2e'},{id:'rema',label:'Rema',color:'#002070'},{id:'meny',label:'Mega/Meny',color:'#d46000'},{id:'andre',label:'Andre',color:'#6040b0'}];
+  const stores = [{id:'kiwi',label:'Kiwi',color:'#1e7a2e'},{id:'rema',label:'Rema',color:'#002070'},{id:'meny',label:'Mega/Meny',color:'#d46000'},{id:'andre',label:'Andre',color:'#6040b0'},{id:'beredskap',label:'Beredskap',color:'#b23b3b'}];
   document.getElementById('storePickerSection').innerHTML = `<div class="field-label">Hvilken butikk?</div>` + stores.map(s => `<button onclick="setItemStore('${h(item.id)}','${s.id}')" style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:5px;border-radius:8px;border:1px solid ${item.store===s.id?s.color:'#d4cabf'};background:${item.store===s.id?s.color+'18':'transparent'};font-family:'DM Sans',sans-serif;font-size:0.9rem;cursor:pointer;color:#0f0e0b;font-weight:${item.store===s.id?'600':'400'}">${h(s.label)}${item.store===s.id?' ✓':''}</button>`).join('');
 }
 function renderSectionOptions(item) {
+  if (item.store === 'beredskap') { document.getElementById('sectionOptions').innerHTML = ''; return; }
   const isAndre = item.store === 'andre';
   const sections = isAndre ? andreSections : kiwiSections;
   const saved = getSavedPlacement(item.text);
@@ -1207,7 +1208,9 @@ function setItemStore(itemId, store) {
   const item = listItems.find(i => i.id === itemId);
   if (!item) return;
   item.store = store;
-  if (store === 'andre') item.kiwiSection = null; else item.andreSection = null;
+  if (store === 'andre') { item.kiwiSection = null; }
+  else if (store === 'beredskap') { item.kiwiSection = null; item.andreSection = null; }
+  else { item.andreSection = null; }
   rememberPlacement(item);
   openItemDrawer(itemId);
   renderList(); scheduleSave();
