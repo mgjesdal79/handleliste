@@ -899,9 +899,10 @@ function togglePanel(name) {
   if (name === 'settings') switchTab('rom');
   if (name === 'occasions') { document.getElementById('panel-occasions').classList.add('tall'); renderOccasionPanel(); }
   if (name === 'add') {
-    if (currentStore === 'andre') { addGroup = 'andre'; addStore = (andreSections[0] && andreSections[0].id) || 'a0'; }
+    if (currentStore === 'beredskap') { addGroup = 'beredskap'; addStore = 'beredskap'; }
+    else if (currentStore === 'andre') { addGroup = 'andre'; addStore = (andreSections[0] && andreSections[0].id) || 'a0'; }
     else { addGroup = 'dagligvare'; addStore = ['kiwi','rema','meny'].includes(currentStore) ? currentStore : 'kiwi'; }
-    addOccasionId = currentStore === 'context' ? null : (activeOccasionFilters.size === 1 ? [...activeOccasionFilters][0] : null);
+    addOccasionId = (activeOccasionFilters.size === 1 ? [...activeOccasionFilters][0] : null);
     renderAddPanel();
   }
 }
@@ -918,11 +919,13 @@ function renderAddPanel() {
   const meta = document.getElementById('addMetaSelectorInner');
   if (!el) return;
   const secs = andreSections.length ? andreSections : defaultAndreSections;
-  const stores = addGroup === 'dagligvare'
-    ? [{id:'kiwi',label:'Kiwi',color:'#2d8a3e'},{id:'rema',label:'Rema',color:'#003087'},{id:'meny',label:'Mega/Meny',color:'#d46000'}]
-    : secs.map(s => ({id:s.id,label:s.label,color:'#7c5cbf'}));
+  const stores = addGroup === 'beredskap'
+    ? []
+    : addGroup === 'dagligvare'
+      ? [{id:'kiwi',label:'Kiwi',color:'#2d8a3e'},{id:'rema',label:'Rema',color:'#003087'},{id:'meny',label:'Mega/Meny',color:'#d46000'}]
+      : secs.map(s => ({id:s.id,label:s.label,color:'#7c5cbf'}));
   el.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-      ${['dagligvare','andre'].map(g => `<button onclick="selectAddGroup('${g}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addGroup===g?'#1a1814':'#e0d9ce'};background:${addGroup===g?'#1a1814':'transparent'};color:${addGroup===g?'white':'#8a8070'};font-family:'Maple Mono',monospace;font-weight:600;font-size:0.8rem;cursor:pointer;">${g==='dagligvare'?'Dagligvare':'Andre butikker'}</button>`).join('')}
+      ${[['dagligvare','Dagligvare'],['andre','Andre butikker'],['beredskap','Beredskap']].map(([g,lbl]) => `<button onclick="selectAddGroup('${g}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addGroup===g?'#1a1814':'#e0d9ce'};background:${addGroup===g?'#1a1814':'transparent'};color:${addGroup===g?'white':'#8a8070'};font-family:'Maple Mono',monospace;font-weight:600;font-size:0.8rem;cursor:pointer;">${lbl}</button>`).join('')}
     </div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       ${stores.map(s => `<button onclick="selectAddStore('${s.id}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addStore===s.id?s.color:'#e0d9ce'};background:${addStore===s.id?s.color:'transparent'};color:${addStore===s.id?'white':'#8a8070'};font-family:'Maple Mono',monospace;font-weight:600;font-size:0.8rem;cursor:pointer;">${h(s.label)}</button>`).join('')}
     </div>`;
@@ -935,7 +938,8 @@ function renderAddPanel() {
 }
 function selectAddGroup(group) {
   addGroup = group;
-  if (group === 'dagligvare') { if (!['kiwi','rema','meny'].includes(addStore)) addStore = 'kiwi'; }
+  if (group === 'beredskap') addStore = 'beredskap';
+  else if (group === 'dagligvare') { if (!['kiwi','rema','meny'].includes(addStore)) addStore = 'kiwi'; }
   else addStore = (andreSections[0] && andreSections[0].id) || 'a0';
   renderAddPanel();
 }
@@ -944,7 +948,7 @@ function addItems() {
   const textarea = document.getElementById('addInput');
   const raw = textarea.value.trim();
   if (!raw) { closePanel(); return; }
-  const storeValue = addGroup === 'andre' ? 'andre' : addStore;
+  const storeValue = addGroup === 'andre' ? 'andre' : addGroup === 'beredskap' ? 'beredskap' : addStore;
   const andreSection = addGroup === 'andre' ? addStore : null;
   const validAddOccasionId = getOccasion(addOccasionId) ? addOccasionId : null;
   raw.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
