@@ -252,6 +252,12 @@
 
   /* Section picker in modal */
   .section-option { display: block; width: 100%; text-align: left; padding: 11px 14px; margin-bottom: 4px; border-radius: 8px; border: 1px solid var(--border); background: transparent; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; transition: all 0.15s; color: var(--text); }
+  .fav-toggle { display: block; width: 100%; text-align: left; padding: 11px 14px; margin-bottom: 8px; border-radius: 8px; border: 1px solid var(--border); background: transparent; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; color: var(--text); }
+  .fav-toggle.on { border-color: #e0a500; background: #fff7e6; font-weight: 600; }
+  .add-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+  .add-suggestions:empty { display: none; }
+  .add-suggest-pill { font-size: 0.85rem; border: 1px solid var(--border); background: #fff; border-radius: 100px; padding: 6px 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text); }
+  .add-suggest-pill:hover { border-color: var(--kiwi); }
   .section-option:hover { background: var(--hi-kiwi); border-color: var(--hi-kiwi-b); }
 
   /* ── SETTINGS ── */
@@ -384,7 +390,8 @@
   <div class="slide-panel" id="panel-add">
     <div class="slide-panel-inner">
       <div id="addStoreSelectorInner"></div>
-      <textarea id="addInput" placeholder="Én vare per linje..."></textarea>
+      <textarea id="addInput" placeholder="Én vare per linje..." oninput="renderAddSuggestions()" onclick="renderAddSuggestions()" onkeyup="renderAddSuggestions()"></textarea>
+      <div id="addSuggestions" class="add-suggestions"></div>
       <div id="addMetaSelectorInner"></div>
       <div class="panel-actions">
         <button class="action-btn primary" onclick="addItems()">Legg til</button>
@@ -492,6 +499,7 @@
     <label class="field-label" for="itemNameInput">Navn</label>
     <input class="text-input" id="itemNameInput" autocomplete="off" />
     <div id="itemMetaSection"></div>
+    <div id="itemFavoriteRow"></div>
     <div id="storePickerSection" style="margin-bottom:16px"></div>
     <div id="sectionOptions"></div>
     <div class="panel-actions">
@@ -563,6 +571,7 @@ let activeItemId = null;
 let addGroup = 'dagligvare';
 let addStore = 'kiwi';
 let addOccasionId = null;
+let currentAddSuggestions = [];
 let placementSearch = '';
 let perfLog = [];
 let collapsedSections = new Set();
@@ -583,6 +592,38 @@ function parseMaybeJson(value, fallback) {
   return fallback;
 }
 function normalizeItemName(text) { return String(text || '').toLowerCase().trim().replace(/\s+/g, ' '); }
+function isFavorite(text) {
+  const k = normalizeItemName(text);
+  return !!k && preferences.favorites.some(f => normalizeItemName(f) === k);
+}
+function toggleFavorite(text) {
+  const k = normalizeItemName(text);
+  if (!k) return;
+  const i = preferences.favorites.findIndex(f => normalizeItemName(f) === k);
+  if (i >= 0) preferences.favorites.splice(i, 1); else preferences.favorites.push(text.trim());
+}
+function matchFavorites(query) {
+  const q = normalizeItemName(query);
+  if (!q) return [];
+  return preferences.favorites
+    .filter(f => normalizeItemName(f).includes(q))
+    .sort((a, b) => (normalizeItemName(a).startsWith(q) ? 0 : 1) - (normalizeItemName(b).startsWith(q) ? 0 : 1))
+    .slice(0, 6);
+}
+function renderFavoriteToggle(item) {
+  const el = document.getElementById('itemFavoriteRow');
+  if (!el) return;
+  const on = isFavorite(item.text);
+  el.innerHTML = `<button type="button" class="fav-toggle ${on ? 'on' : ''}" onclick="toggleFavoriteFromEditor()">${on ? '★' : '☆'} Foreslå når jeg skriver</button>`;
+}
+function toggleFavoriteFromEditor() {
+  const item = listItems.find(i => i.id === activeItemId);
+  if (!item) return;
+  const name = (document.getElementById('itemNameInput').value || item.text).trim();
+  toggleFavorite(name);
+  renderFavoriteToggle({ ...item, text: name });
+  scheduleSave();
+}
 function bytesOf(str) { return new Blob([String(str || '')]).size; }
 function markPerf(label, extra = '') {
   perfLog.unshift({ at: new Date().toLocaleTimeString('no-NO'), label, extra });
@@ -702,6 +743,7 @@ function normalizeState() {
   });
   if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
   if (!preferences.itemPlacements || typeof preferences.itemPlacements !== 'object') preferences.itemPlacements = {};
+  if (!Array.isArray(preferences.favorites)) preferences.favorites = [];
   ensureDefaultKiwiCategories();
   activeOccasionFilters = new Set([...activeOccasionFilters].filter(id => !!getOccasion(id)));
   if (preferences.schemaVersion !== 1) migrateToSchemaV1();
@@ -935,6 +977,7 @@ function renderAddPanel() {
     else addOccasionId = null;
     meta.innerHTML = metaParts.length ? `<div class="meta-grid ${metaParts.length === 1 ? 'single' : ''}">${metaParts.join('')}</div>` : '';
   }
+  renderAddSuggestions();
 }
 function selectAddGroup(group) {
   addGroup = group;
@@ -955,9 +998,41 @@ function addItems() {
     listItems.push({ id: genId(), text: line, store: storeValue, kiwiSection: null, andreSection, checked: false, occasionId: validAddOccasionId, createdAt: nowIso() });
   });
   textarea.value = '';
+  currentAddSuggestions = [];
+  const sStrip = document.getElementById('addSuggestions'); if (sStrip) sStrip.innerHTML = '';
   closePanel();
   renderList();
   scheduleSave();
+}
+function renderAddSuggestions() {
+  const strip = document.getElementById('addSuggestions');
+  const input = document.getElementById('addInput');
+  if (!strip || !input) return;
+  if (addGroup !== 'dagligvare') { currentAddSuggestions = []; strip.innerHTML = ''; return; }
+  const pos = input.selectionStart ?? input.value.length;
+  const before = input.value.slice(0, pos);
+  const lineStart = before.lastIndexOf('\n') + 1;
+  const nextNl = input.value.indexOf('\n', pos);
+  const lineEnd = nextNl === -1 ? input.value.length : nextNl;
+  const currentLine = input.value.slice(lineStart, lineEnd);
+  currentAddSuggestions = matchFavorites(currentLine);
+  strip.innerHTML = currentAddSuggestions.map((f, i) => `<button type="button" class="add-suggest-pill" onclick="acceptSuggestion(${i})">★ ${h(f)}</button>`).join('');
+}
+function acceptSuggestion(idx) {
+  const text = currentAddSuggestions[idx];
+  if (text == null) return;
+  const input = document.getElementById('addInput');
+  const pos = input.selectionStart ?? input.value.length;
+  const before = input.value.slice(0, pos);
+  const lineStart = before.lastIndexOf('\n') + 1;
+  const nextNl = input.value.indexOf('\n', pos);
+  const lineEnd = nextNl === -1 ? input.value.length : nextNl;
+  const after = input.value.slice(lineEnd).replace(/^\n/, '');
+  input.value = input.value.slice(0, lineStart) + text + '\n' + after;
+  const caret = lineStart + text.length + 1;
+  input.focus();
+  input.setSelectionRange(caret, caret);
+  renderAddSuggestions();
 }
 
 // OCCASIONS
@@ -1178,6 +1253,7 @@ function openItemDrawer(itemId) {
   const metaParts = [];
   if (activeOccasions().length || item.occasionId) metaParts.push(`<label><span class="field-label">Anledning</span><select class="select-input" id="itemOccasionSelect">${renderOccasionOptions(item.occasionId || '', 'Ingen anledning')}</select></label>`);
   document.getElementById('itemMetaSection').innerHTML = metaParts.length ? `<div class="meta-grid ${metaParts.length === 1 ? 'single' : ''}">${metaParts.join('')}</div>` : '';
+  renderFavoriteToggle(item);
   renderStorePicker(item);
   renderSectionOptions(item);
   const modalBackdrop = document.getElementById('sectionModal');
