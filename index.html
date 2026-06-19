@@ -492,6 +492,7 @@
 <script>
 // CONFIG
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
+const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
 async function api(action, token, payload = null) {
   const res = await fetch(EDGE_FUNCTION_URL, {
@@ -714,6 +715,19 @@ function normalizeState() {
   if (!preferences.itemPlacements || typeof preferences.itemPlacements !== 'object') preferences.itemPlacements = {};
   ensureDefaultKiwiCategories();
   activeOccasionFilters = new Set([...activeOccasionFilters].filter(id => !!getOccasion(id)));
+  if (preferences.schemaVersion !== 1) migrateToSchemaV1();
+}
+
+function migrateToSchemaV1() {
+  const isBeredskap = item =>
+    item.occasionId === BEREDSKAP_OCCASION_ID || normalizeItemName(item.text).includes('beredskap');
+  listItems.forEach(item => {
+    if (isBeredskap(item)) { item.store = 'beredskap'; item.occasionId = null; }
+  });
+  occasions = occasions.filter(o => o.id !== BEREDSKAP_OCCASION_ID);
+  occasions.forEach(o => { delete o.notes; delete o.archived; });
+  listItems.forEach(i => { delete i.contextId; });
+  preferences.schemaVersion = 1;
 }
 
 // SUPABASE EDGE FUNCTION FLOW
