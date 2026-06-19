@@ -537,8 +537,6 @@ let kiwiSections = JSON.parse(JSON.stringify(defaultKiwiSections));
 let andreSections = JSON.parse(JSON.stringify(defaultAndreSections));
 let listItems = [];
 let occasions = [];
-let occasionTodos = [];
-let contexts = [];
 let preferences = { itemPlacements: {} };
 let currentStore = 'kiwi';
 let activeOccasionFilters = new Set();
@@ -628,7 +626,7 @@ function clearRoomCode() {
 function cacheKey(code) { return 'handleliste.cache.' + String(code || '').slice(0, 32); }
 function rowFromState() {
   return {
-    data: JSON.stringify({ items: listItems, occasions, occasionTodos, contexts }),
+    data: JSON.stringify({ items: listItems, occasions }),
     categories: JSON.stringify({ kiwi: kiwiSections, andre: andreSections }),
     preferences
   };
@@ -644,7 +642,7 @@ function getRowHash(row) {
   return JSON.stringify(parseMaybeJson(row?.data, {})) + JSON.stringify(parseMaybeJson(row?.categories, {})) + JSON.stringify(parseMaybeJson(row?.preferences, {}));
 }
 function getLocalHash() {
-  return JSON.stringify({ items: listItems, occasions, occasionTodos, contexts }) + JSON.stringify({ kiwi: kiwiSections, andre: andreSections }) + JSON.stringify(preferences || {});
+  return JSON.stringify({ items: listItems, occasions }) + JSON.stringify({ kiwi: kiwiSections, andre: andreSections }) + JSON.stringify(preferences || {});
 }
 
 function ensureDefaultKiwiCategories() {
@@ -680,8 +678,6 @@ function ensureDefaultKiwiCategories() {
 function normalizeState() {
   if (!Array.isArray(listItems)) listItems = [];
   if (!Array.isArray(occasions)) occasions = [];
-  if (!Array.isArray(occasionTodos)) occasionTodos = [];
-  if (!Array.isArray(contexts)) contexts = [];
   listItems.forEach(item => {
     if (!item.id) item.id = genId();
     if (typeof item.text !== 'string') item.text = String(item.text || '');
@@ -694,22 +690,7 @@ function normalizeState() {
     if (!o.id) o.id = genId();
     if (!o.name) o.name = 'Anledning ' + (i + 1);
     if (!('emoji' in o)) o.emoji = guessOccasionEmoji(o.name);
-    if (!('notes' in o)) o.notes = '';
     if (!('sortOrder' in o)) o.sortOrder = i;
-    if (!('archived' in o)) o.archived = false;
-  });
-  occasionTodos.forEach((t, i) => {
-    if (!t.id) t.id = genId();
-    if (!t.text) t.text = '';
-    if (!('checked' in t)) t.checked = false;
-    if (!('sortOrder' in t)) t.sortOrder = i;
-    if (!('contextId' in t)) t.contextId = null;
-  });
-  contexts.forEach((c, i) => {
-    if (!c.id) c.id = genId();
-    if (!c.name) c.name = 'Kontekst ' + (i + 1);
-    if (!('sortOrder' in c)) c.sortOrder = i;
-    if (!('archived' in c)) c.archived = false;
   });
   if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
   if (!preferences.itemPlacements || typeof preferences.itemPlacements !== 'object') preferences.itemPlacements = {};
@@ -804,8 +785,6 @@ function loadFromRow(row) {
     });
   } else listItems = [];
   occasions = Array.isArray(d.occasions) ? d.occasions : [];
-  occasionTodos = Array.isArray(d.occasionTodos) ? d.occasionTodos : [];
-  contexts = Array.isArray(d.contexts) ? d.contexts : [];
   const cats = parseMaybeJson(row?.categories, null);
   if (cats) {
     if (Array.isArray(cats.kiwi)) kiwiSections.splice(0, kiwiSections.length, ...cats.kiwi);
@@ -855,7 +834,7 @@ async function saveToCloud() {
   setSyncStatus('syncing');
   try {
     normalizeState();
-    const dataStr = JSON.stringify({ items: listItems, occasions, occasionTodos, contexts });
+    const dataStr = JSON.stringify({ items: listItems, occasions });
     const catStr = JSON.stringify({ kiwi: kiwiSections, andre: andreSections });
     const prefStr = JSON.stringify(preferences || {});
     const result = await api('save', currentRoomCode, { data: dataStr, categories: catStr, preferences });
