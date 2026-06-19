@@ -1120,7 +1120,6 @@ function isInActiveShoppingScope(item) {
   return !item.occasionId;
 }
 function getScopedItems() {
-  if (currentStore === 'context') return listItems;
   return listItems.filter(isInActiveShoppingScope);
 }
 function renderList() {
@@ -1131,10 +1130,13 @@ function renderList() {
   const bottomBar = document.getElementById('bottomBar');
   if (!container) return;
   const scoped = getScopedItems();
-  bottomBar.style.display = currentStore !== 'context' && scoped.some(i => i.checked) ? 'flex' : 'none';
-  if (currentStore === 'context') renderNextView(container);
+  bottomBar.style.display = scoped.some(i => i.checked) ? 'flex' : 'none';
+  const occBtn = document.getElementById('occasionBtn');
+  if (occBtn) occBtn.style.display = currentStore === 'beredskap' ? 'none' : 'inline-flex';
+  if (currentStore === 'beredskap') renderBeredskap(container, scoped);
   else if (currentStore === 'andre') renderAndre(container, scoped);
   else renderGrocery(container, scoped);
+  updateOccasionBadge();
   markPerf('Render', Math.round(performance.now() - start) + ' ms');
 }
 function hasOccasionItems(occasionId) { return listItems.some(i => i.occasionId === occasionId); }
@@ -1201,6 +1203,29 @@ function renderAndre(container, items) {
   if (!listHtml) listHtml = hasActiveOccasionFilters() ? `<div class="empty-state"><p>${storeOccasionEmptyText()}</p></div>` : '<div class="empty-state"><div class="emoji">&#127970;</div><p>Ingen varer lagt til for Andre butikker her.</p></div>';
   container.innerHTML = html + listHtml;
   attachEvents();
+}
+function renderBeredskap(container, items) {
+  const active = [], vogna = [];
+  for (const item of items) {
+    if (item.store !== 'beredskap') continue;
+    if (item.checked) vogna.push(item); else active.push(item);
+  }
+  let listHtml = '';
+  active.forEach(item => listHtml += renderItem(item, 'beredskap'));
+  if (vogna.length) {
+    listHtml += '<div class="section-header in-vogna">Vogna</div>';
+    vogna.forEach(item => listHtml += renderItem(item, 'beredskap', true));
+  }
+  if (!listHtml) listHtml = '<div class="empty-state"><div class="emoji">&#128270;</div><p>Ingen beredskapsvarer enn&aring;. Trykk <strong>+</strong> for &aring; legge til.</p></div>';
+  container.innerHTML = listHtml;
+  attachEvents();
+}
+function updateOccasionBadge() {
+  const b = document.getElementById('occasionBadge');
+  if (!b) return;
+  const n = activeOccasionFilters.size;
+  b.textContent = n ? String(n) : '';
+  b.style.display = n ? 'inline-flex' : 'none';
 }
 function storeLabelForItem(item) {
   if (item.store === 'kiwi') return 'Kiwi';
