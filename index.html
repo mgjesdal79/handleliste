@@ -897,10 +897,11 @@ function switchTab(tab) {
 }
 function togglePanel(name) {
   if (openPanel === name) { closePanel(); return; }
-  ['add','settings'].forEach(p => document.getElementById('panel-' + p).classList.remove('open'));
+  ['add','settings','occasions'].forEach(p => document.getElementById('panel-' + p).classList.remove('open'));
   openPanel = name;
   document.getElementById('panel-' + name).classList.add('open');
   if (name === 'settings') switchTab('rom');
+  if (name === 'occasions') { document.getElementById('panel-occasions').classList.add('tall'); renderOccasionPanel(); }
   if (name === 'add') {
     if (currentStore === 'andre') { addGroup = 'andre'; addStore = (andreSections[0] && andreSections[0].id) || 'a0'; }
     else { addGroup = 'dagligvare'; addStore = ['kiwi','rema','meny'].includes(currentStore) ? currentStore : 'kiwi'; }
@@ -969,24 +970,31 @@ function renderOccasionOptions(selectedId, emptyLabel) {
 function renderContextOptions(selectedId, emptyLabel) {
   return `<option value="">${h(emptyLabel)}</option>` + activeContexts().map(c => `<option value="${h(c.id)}" ${c.id===selectedId?'selected':''}>${h(c.name)}</option>`).join('');
 }
-function renderOccasionFilterBar() {
-  const bar = document.getElementById('occasionFilterBar');
-  if (!bar) return;
+function renderOccasionPanel() {
+  const inner = document.getElementById('occasionPanelInner');
+  if (!inner) return;
   const occs = activeOccasions();
-  const visible = currentStore !== 'context' && occs.length > 0;
-  bar.style.display = visible ? 'flex' : 'none';
-  if (!visible) { bar.innerHTML = ''; return; }
-  let html = '';
-  occs.forEach(o => {
-    const active = activeOccasionFilters.has(o.id);
-    html += `<button class="filter-chip ${active?'active':''}" onclick="setOccasionFilter('${h(o.id)}')" aria-pressed="${active}">${active?'✓ ':''}${h(occasionLabel(o))}</button>`;
-  });
-  bar.innerHTML = html;
+  const chips = occs.length
+    ? occs.map(o => {
+        const active = activeOccasionFilters.has(o.id);
+        return `<button class="filter-chip ${active ? 'active' : ''}" onclick="setOccasionFilter('${h(o.id)}')">${active ? '✓ ' : ''}${h(occasionLabel(o))}</button>`;
+      }).join('')
+    : '<p class="panel-help">Ingen anledninger enn&aring;. Lag en under.</p>';
+  const rows = occs.map(o =>
+    `<div class="cat-row"><input class="text-input occasion-emoji-input" value="${h(o.emoji || '')}" placeholder="🏷️" onchange="updateOccasionEmoji('${h(o.id)}', this.value)" aria-label="Emoji"><input class="cat-name-input" value="${h(o.name)}" onchange="updateOccasionName('${h(o.id)}', this.value)"><button class="cat-delete-btn" onclick="deleteOccasion('${h(o.id)}')">×</button></div>`
+  ).join('');
+  inner.innerHTML =
+    `<div class="filter-bar" style="padding:0;flex-wrap:wrap;gap:6px">${chips}</div>` +
+    `<div class="soft-divider"></div>` +
+    `<label class="field-label">Rediger anledninger</label>` +
+    `<div class="cat-list">${rows}</div>` +
+    `<div class="todo-add-row"><input class="text-input occasion-emoji-input" id="newOccasionEmoji" placeholder="🏷️" aria-label="Emoji"><input class="text-input" id="newOccasionName" placeholder="Ny anledning" onkeydown="if(event.key==='Enter'){addOccasionFromNext()}"><button class="small-btn" onclick="addOccasionFromNext()">+ Ny</button></div>`;
 }
 function setOccasionFilter(id) {
   if (!id) activeOccasionFilters.clear();
   else if (activeOccasionFilters.has(id)) activeOccasionFilters.delete(id);
   else activeOccasionFilters.add(id);
+  if (openPanel === 'occasions') renderOccasionPanel();
   renderList();
 }
 function addOccasionFromNext() {
@@ -1006,7 +1014,7 @@ function updateOccasionName(id, value) {
   if (!o) return;
   o.name = value.trim() || o.name;
   if (!o.emoji) o.emoji = guessOccasionEmoji(o.name);
-  renderOccasionFilterBar();
+  renderOccasionPanel();
   renderList();
   scheduleSave();
 }
@@ -1014,7 +1022,7 @@ function updateOccasionEmoji(id, value) {
   const o = getOccasion(id);
   if (!o) return;
   o.emoji = normalizeEmojiInput(value);
-  renderOccasionFilterBar();
+  renderOccasionPanel();
   renderList();
   scheduleSave();
 }
@@ -1031,7 +1039,7 @@ function renderOccasionEditor() {
 }
 function saveOccasions() {
   document.querySelectorAll('#occasionEditorList .cat-name-input').forEach(input => { const o = getOccasion(input.dataset.id); if (o) o.name = input.value.trim() || o.name; });
-  closePanel(); renderOccasionFilterBar(); renderList(); scheduleSave();
+  closePanel(); renderOccasionPanel(); renderList(); scheduleSave();
 }
 function moveOccasion(id, dir) {
   const sorted = activeOccasions();
@@ -1125,7 +1133,6 @@ function getScopedItems() {
 function renderList() {
   const start = performance.now();
   normalizeState();
-  renderOccasionFilterBar();
   const container = document.getElementById('result');
   const bottomBar = document.getElementById('bottomBar');
   if (!container) return;
