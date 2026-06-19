@@ -950,7 +950,7 @@ function addItems() {
   if (!raw) { closePanel(); return; }
   const storeValue = addGroup === 'andre' ? 'andre' : addGroup === 'beredskap' ? 'beredskap' : addStore;
   const andreSection = addGroup === 'andre' ? addStore : null;
-  const validAddOccasionId = getOccasion(addOccasionId) ? addOccasionId : null;
+  const validAddOccasionId = addGroup === 'beredskap' ? null : (getOccasion(addOccasionId) ? addOccasionId : null);
   raw.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
     listItems.push({ id: genId(), text: line, store: storeValue, kiwiSection: null, andreSection, checked: false, occasionId: validAddOccasionId, createdAt: nowIso() });
   });
