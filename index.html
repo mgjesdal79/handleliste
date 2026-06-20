@@ -62,8 +62,9 @@
   .room-btn:hover { opacity: 0.85; }
 
   /* ── TOPBAR ── */
+  .app-header { position: sticky; top: 0; z-index: 50; background: var(--bg); }
   .topbar {
-    position: sticky; top: 0; z-index: 50; background: var(--bg);
+    background: var(--bg);
     border-bottom: 1px solid var(--border); padding: 10px 16px;
     max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 8px;
   }
@@ -110,6 +111,10 @@
   .slide-panel.open { max-height: 500px; }
   .slide-panel.open.tall { max-height: 80vh; overflow-y: auto; }
   .slide-panel-inner { padding: 16px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+  .panel-head h2 { margin: 0; font-size: 0.95rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+  .panel-close { width: 30px; height: 30px; border-radius: 50%; border: none; background: var(--bg); color: var(--muted); font-size: 1.15rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+  .panel-close:hover { background: var(--border); color: var(--text); }
   .panel-tabs { display: flex; gap: 5px; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 12px; flex-wrap: wrap; }
   .panel-tab {
     padding: 4px 12px; border-radius: 100px; border: 1px solid var(--border);
@@ -388,6 +393,7 @@
 
 <!-- MAIN APP -->
 <div id="mainApp" class="hidden">
+  <div class="app-header">
   <div class="topbar">
     <h1>🛒</h1>
     <div class="store-group">
@@ -492,6 +498,7 @@
       </div>
     </div>
   </div>
+  </div><!-- /.app-header -->
 
   <div id="result"></div>
 
@@ -535,7 +542,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.06.20 (b7)';
+const APP_VERSION = '2026.06.20 (b8)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -1105,6 +1112,7 @@ function renderOccasionPanel() {
       `<div class="todo-add-row"><input class="text-input occasion-emoji-input" id="newOccasionEmoji" placeholder="🎉" aria-label="Emoji"><input class="text-input" id="newOccasionName" placeholder="Ny anledning" onkeydown="if(event.key==='Enter'){addOccasionFromNext()}"><button class="small-btn" onclick="addOccasionFromNext()">+ Ny</button></div>`
     : '';
   inner.innerHTML =
+    `<div class="panel-head"><h2>Anledninger</h2><button class="panel-close" aria-label="Lukk" onclick="closePanel()">✕</button></div>` +
     `<div class="occasion-toggle-list">${toggleList}</div>` +
     `<button class="occasion-edit-btn" onclick="toggleOccasionEditMode()">${occasionEditMode ? '✓ Ferdig' : '✎ Rediger anledninger'}</button>` +
     editSection;
@@ -1392,6 +1400,11 @@ function openSectionPicker() {}
 function setStoreForItem() {}
 function assignSection() {}
 function guessSection(text, sections) { return null; }
+
+// Lukk åpent panel ved trykk utenfor header (panelene ligger i .app-header)
+document.addEventListener('click', e => {
+  if (openPanel && !e.target.closest('.app-header')) closePanel();
+});
 
 // INIT
 markPerf('Init');
