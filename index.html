@@ -92,6 +92,8 @@
   .icon-btn { background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 2px 5px; border-radius: 8px; color: var(--text); transition: background 0.15s; line-height: 1; }
   .icon-btn:hover { background: var(--border); }
   .icon-btn { position: relative; }
+  .icon-btn.add-primary { background: var(--text); color: #fff; font-size: 1.45rem; font-weight: 700; padding: 3px 13px; border-radius: 100px; box-shadow: 0 1px 5px rgba(15,14,11,0.18); }
+  .icon-btn.add-primary:hover { background: #000; }
   .occasion-badge {
     position: absolute; top: -2px; right: -2px; min-width: 15px; height: 15px; padding: 0 3px;
     border-radius: 100px; background: var(--beredskap); color: #fff; font-size: 0.6rem;
@@ -303,6 +305,13 @@
   .filter-chip.active { background: var(--text); border-color: var(--text); color: white; box-shadow: 0 1px 5px rgba(15,14,11,0.13); }
   .filter-chip.base { border-style: solid; }
   .filter-chip.add { border-style: dashed; }
+  .occasion-toggle-list { display: flex; flex-direction: column; gap: 6px; }
+  .occasion-toggle { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.95rem; cursor: pointer; transition: background 0.12s, border-color 0.12s; }
+  .occasion-toggle.active { border-color: var(--text); background: var(--hi-andre); }
+  .occasion-toggle .occasion-check { width: 1.1em; flex-shrink: 0; color: var(--kiwi); font-weight: 700; }
+  .occasion-toggle .occasion-emoji { flex-shrink: 0; }
+  .occasion-toggle .occasion-name { flex: 1; min-width: 0; }
+  .occasion-edit-btn { margin-top: 12px; width: 100%; padding: 9px; border-radius: 8px; border: 1px dashed var(--border); background: transparent; font-family: 'Maple Mono', monospace; font-weight: 600; font-size: 0.82rem; cursor: pointer; color: var(--muted); }
   .occasion-emoji-input { width: 56px; flex: 0 0 56px; text-align: center; font-size: 1.15rem; }
   .occasion-name-input { flex: 1; min-width: 0; }
   .panel-help { color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 12px; }
@@ -373,9 +382,9 @@
     <div class="store-group">
       <button class="store-btn" data-store="andre">A</button>
     </div>
-    <button class="icon-btn" id="occasionBtn" onclick="togglePanel('occasions')">🏷️<span class="occasion-badge" id="occasionBadge"></span></button>
+    <button class="icon-btn" id="occasionBtn" onclick="togglePanel('occasions')">🎉<span class="occasion-badge" id="occasionBadge"></span></button>
     <div class="sync-dot" id="syncDot"></div>
-    <button class="icon-btn" onclick="togglePanel('add')">＋</button>
+    <button class="icon-btn add-primary" onclick="togglePanel('add')" aria-label="Legg til vare">＋</button>
     <button class="icon-btn" onclick="togglePanel('settings')">⚙️</button>
   </div>
 
@@ -560,6 +569,7 @@ let currentStore = 'kiwi';
 let activeOccasionFilters = new Set();
 let currentRoomCode = null;
 let openPanel = null;
+let occasionEditMode = false;
 let saveTimeout = null;
 let pollInterval = null;
 let isSaving = false;
@@ -949,7 +959,7 @@ function togglePanel(name) {
   openPanel = name;
   document.getElementById('panel-' + name).classList.add('open');
   if (name === 'settings') switchTab('rom');
-  if (name === 'occasions') { document.getElementById('panel-occasions').classList.add('tall'); renderOccasionPanel(); }
+  if (name === 'occasions') { occasionEditMode = false; document.getElementById('panel-occasions').classList.add('tall'); renderOccasionPanel(); }
   if (name === 'add') {
     if (currentStore === 'andre') { addGroup = 'andre'; addStore = (andreSections[0] && andreSections[0].id) || 'a0'; }
     else { addGroup = 'dagligvare'; addStore = ['kiwi','rema','meny'].includes(currentStore) ? currentStore : 'kiwi'; }
@@ -1049,22 +1059,26 @@ function renderOccasionPanel() {
   const inner = document.getElementById('occasionPanelInner');
   if (!inner) return;
   const occs = activeOccasions();
-  const chips = occs.length
+  const toggleList = occs.length
     ? occs.map(o => {
         const active = activeOccasionFilters.has(o.id);
-        return `<button class="filter-chip ${active ? 'active' : ''}" onclick="setOccasionFilter('${h(o.id)}')">${active ? '✓ ' : ''}${h(occasionLabel(o))}</button>`;
+        return `<button class="occasion-toggle ${active ? 'active' : ''}" onclick="setOccasionFilter('${h(o.id)}')"><span class="occasion-check">${active ? '✓' : ''}</span><span class="occasion-emoji">${h(o.emoji || '🎉')}</span><span class="occasion-name">${h(o.name)}</span></button>`;
       }).join('')
-    : '<p class="panel-help">Ingen anledninger enn&aring;. Lag en under.</p>';
-  const rows = occs.map(o =>
-    `<div class="cat-row"><input class="text-input occasion-emoji-input" value="${h(o.emoji || '')}" placeholder="🏷️" onchange="updateOccasionEmoji('${h(o.id)}', this.value)" aria-label="Emoji"><input class="cat-name-input" value="${h(o.name)}" onchange="updateOccasionName('${h(o.id)}', this.value)"><button class="cat-delete-btn" onclick="deleteOccasion('${h(o.id)}')">×</button></div>`
-  ).join('');
+    : '<p class="panel-help">Ingen anledninger enn&aring;. Trykk &laquo;Rediger anledninger&raquo; for &aring; lage en.</p>';
+  const editSection = occasionEditMode
+    ? `<div class="soft-divider"></div>` +
+      `<label class="field-label">Rediger anledninger</label>` +
+      `<div class="cat-list">${occs.map(o =>
+        `<div class="cat-row"><input class="text-input occasion-emoji-input" value="${h(o.emoji || '')}" placeholder="🎉" onchange="updateOccasionEmoji('${h(o.id)}', this.value)" aria-label="Emoji"><input class="cat-name-input" value="${h(o.name)}" onchange="updateOccasionName('${h(o.id)}', this.value)"><button class="cat-delete-btn" onclick="deleteOccasion('${h(o.id)}')">×</button></div>`
+      ).join('')}</div>` +
+      `<div class="todo-add-row"><input class="text-input occasion-emoji-input" id="newOccasionEmoji" placeholder="🎉" aria-label="Emoji"><input class="text-input" id="newOccasionName" placeholder="Ny anledning" onkeydown="if(event.key==='Enter'){addOccasionFromNext()}"><button class="small-btn" onclick="addOccasionFromNext()">+ Ny</button></div>`
+    : '';
   inner.innerHTML =
-    `<div class="filter-bar" style="padding:0;flex-wrap:wrap;gap:6px">${chips}</div>` +
-    `<div class="soft-divider"></div>` +
-    `<label class="field-label">Rediger anledninger</label>` +
-    `<div class="cat-list">${rows}</div>` +
-    `<div class="todo-add-row"><input class="text-input occasion-emoji-input" id="newOccasionEmoji" placeholder="🏷️" aria-label="Emoji"><input class="text-input" id="newOccasionName" placeholder="Ny anledning" onkeydown="if(event.key==='Enter'){addOccasionFromNext()}"><button class="small-btn" onclick="addOccasionFromNext()">+ Ny</button></div>`;
+    `<div class="occasion-toggle-list">${toggleList}</div>` +
+    `<button class="occasion-edit-btn" onclick="toggleOccasionEditMode()">${occasionEditMode ? '✓ Ferdig' : '✎ Rediger anledninger'}</button>` +
+    editSection;
 }
+function toggleOccasionEditMode() { occasionEditMode = !occasionEditMode; renderOccasionPanel(); }
 function setOccasionFilter(id) {
   if (!id) activeOccasionFilters.clear();
   else if (activeOccasionFilters.has(id)) activeOccasionFilters.delete(id);
@@ -1081,6 +1095,7 @@ function addOccasionFromNext() {
   occasions.push({ id: genId(), name, emoji, sortOrder: occasions.length, createdAt: nowIso() });
   if (nameInput) nameInput.value = '';
   if (emojiInput) emojiInput.value = '';
+  if (openPanel === 'occasions') renderOccasionPanel();
   renderList();
   scheduleSave();
 }
