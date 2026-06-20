@@ -524,7 +524,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.06.20 (b1)';
+const APP_VERSION = '2026.06.20 (b2)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -763,6 +763,7 @@ function normalizeState() {
   activeOccasionFilters = new Set([...activeOccasionFilters].filter(id => !!getOccasion(id)));
   if ((preferences.schemaVersion || 0) < 1) migrateToSchemaV1();
   if ((preferences.schemaVersion || 0) < 2) migrateToSchemaV2();
+  if ((preferences.schemaVersion || 0) < 3) migrateToSchemaV3();
 }
 
 function migrateToSchemaV1() {
@@ -786,6 +787,15 @@ function migrateToSchemaV2() {
     if (item.store === 'beredskap') { item.store = 'andre'; item.andreSection = item.andreSection || null; item.occasionId = BEREDSKAP_OCCASION_ID; }
   });
   preferences.schemaVersion = 2;
+}
+
+function migrateToSchemaV3() {
+  // v1→v2 satte alle beredskapsvarer til store='andre' (mistet kiwi). Gjør dem til dagligvare
+  // så de vises i K/R/M og kan toggles der via Beredskap-anledningen.
+  listItems.forEach(item => {
+    if (item.occasionId === BEREDSKAP_OCCASION_ID) { item.store = 'kiwi'; item.andreSection = null; }
+  });
+  preferences.schemaVersion = 3;
 }
 
 // SUPABASE EDGE FUNCTION FLOW
@@ -868,11 +878,14 @@ function loadFromRow(row) {
     if (Array.isArray(cats.andre)) andreSections.splice(0, andreSections.length, ...cats.andre);
   }
   preferences = parseMaybeJson(row?.preferences, { itemPlacements: {} });
+  const schemaBefore = (preferences && preferences.schemaVersion) || 0;
   normalizeState();
   lastDataHash = getRowHash(row);
   localDirtySinceLoad = false;
   saveRoomCache(rowFromState());
   markPerf('Parse/cache', bytesOf(JSON.stringify(rowFromState())) + ' bytes');
+  // Persistér migrert data til skyen så fiksen faktisk lagres (ikke bare i minnet).
+  if (((preferences.schemaVersion) || 0) !== schemaBefore && currentRoomCode) scheduleSave();
 }
 function showApp() {
   document.getElementById('roomScreen').classList.add('hidden');
