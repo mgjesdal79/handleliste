@@ -365,6 +365,20 @@
   .placement-row { display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid rgba(212,202,191,0.55); font-size:0.86rem; }
   .placement-row:last-child { border-bottom:none; }
   .placement-meta { color:var(--muted); font-size:0.75rem; }
+  .raid-tools { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:10px 0 4px; }
+  .raid-toggle { display:inline-flex; align-items:center; gap:7px; font-size:0.88rem; color:var(--text); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .raid-toggle .pl-check { width:20px; height:20px; }
+  .link-btn { background:none; border:none; color:var(--rema); text-decoration:underline; cursor:pointer; font-size:0.83rem; font-family:'DM Sans',sans-serif; padding:0; }
+  .pl-row { display:flex; align-items:center; gap:11px; padding:10px 6px; border-bottom:1px solid rgba(212,202,191,0.55); font-size:0.9rem; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .pl-row:last-child { border-bottom:none; }
+  .pl-row.sel { background:var(--hi-kiwi); border-radius:6px; }
+  .pl-check { width:22px; height:22px; flex-shrink:0; border:2px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:0.85rem; line-height:1; color:#fff; background:transparent; }
+  .pl-row.sel .pl-check { background:var(--kiwi); border-color:var(--kiwi); }
+  .pl-body { flex:1; min-width:0; }
+  .pl-name { font-weight:600; word-break:break-word; }
+  .pl-meta { color:var(--muted); font-size:0.74rem; }
+  .action-btn.danger { color:#fff; background:var(--meny); border-color:var(--meny); }
+  .action-btn.danger:disabled { opacity:0.4; }
   .next-section-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin: 4px 0 10px; }
   .next-section-title h2 { margin:0; font-family:'DM Sans',sans-serif; font-size:1.08rem; letter-spacing:-0.02em; }
   .card-heading-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
@@ -376,7 +390,7 @@
   .linked-item-row { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; padding:7px 9px; border:1px solid rgba(212,202,191,0.75); border-radius:8px; background:var(--bg); font-size:0.88rem; }
   .linked-item-meta { color:var(--muted); font-size:0.72rem; font-family:'DM Sans',sans-serif; text-transform:uppercase; letter-spacing:0.04em; }
   .soft-divider { height:1px; background:var(--border); opacity:0.7; margin:14px 0; }
-  @media (max-width: 760px) { .maintenance-only { display:none !important; } .meta-grid { grid-template-columns:1fr; } }
+  @media (max-width: 760px) { .meta-grid { grid-template-columns:1fr; } }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -477,7 +491,7 @@
       </div>
 
 
-      <div class="panel-section maintenance-only" id="tab-maintenance">
+      <div class="panel-section" id="tab-maintenance">
         <div id="maintenancePanel"></div>
       </div>
 
@@ -542,7 +556,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.06.20 (b8)';
+const APP_VERSION = '2026.06.20 (b9)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -606,6 +620,9 @@ let addStore = 'kiwi';
 let addOccasionId = null;
 let currentAddSuggestions = [];
 let placementSearch = '';
+let placementShowUnused = false;
+let placementSelection = new Set();
+let placementShown = [];
 let perfLog = [];
 let openAndreSection = null;
 let dragSrcIdx = null;
@@ -1378,13 +1395,55 @@ function toemVogna() {
   renderList(); scheduleSave();
 }
 function nyHandel() { document.getElementById('confirmModal').classList.remove('open'); listItems = []; renderList(); scheduleSave(); }
+function isPlacementUnused(key) {
+  const onList = listItems.some(i => normalizeItemName(i.text) === key);
+  const fav = (preferences.favorites || []).some(f => normalizeItemName(f) === key);
+  return !onList && !fav;
+}
 function renderMaintenance() {
   const el = document.getElementById('maintenancePanel');
   if (!el) return;
   const placements = Object.entries(preferences.itemPlacements || {}).sort(([a],[b]) => a.localeCompare(b));
-  const filtered = placements.filter(([key]) => key.includes(placementSearch.toLowerCase().trim())).slice(0, 80);
+  // fjern utvalg som ikke lenger finnes
+  placementSelection.forEach(k => { if (!(k in (preferences.itemPlacements || {}))) placementSelection.delete(k); });
+  const q = placementSearch.toLowerCase().trim();
+  let list = placements.filter(([key]) => key.includes(q));
+  if (placementShowUnused) list = list.filter(([key]) => isPlacementUnused(key));
+  const unusedCount = placements.filter(([key]) => isPlacementUnused(key)).length;
+  const shown = list.slice(0, 200);
+  placementShown = shown.map(([k]) => k);
+  const selCount = placementSelection.size;
+  const allVisibleSelected = shown.length > 0 && shown.every(([key]) => placementSelection.has(key));
   const dataSize = bytesOf(JSON.stringify({ items: listItems, occasions, categories: { kiwi: kiwiSections, andre: andreSections }, preferences }));
-  el.innerHTML = `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.length}</strong><span>anledninger</span></div><div class="metric"><strong>${placements.length}</strong><span>lærte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div></div><p class="panel-help">Desktop-vedlikehold for å rydde feil i lærte plasseringer og se om payloaden er blitt stor.</p></div><div class="maintenance-card"><h2>Lærte plasseringer</h2><input class="text-input" placeholder="Søk..." value="${h(placementSearch)}" oninput="placementSearch=this.value;renderMaintenance()"><div style="margin-top:10px">${filtered.map(([key, p]) => `<div class="placement-row"><div><strong>${h(key)}</strong><div class="placement-meta">${h(p.store || '-')}${p.kiwiSection?' / '+h(p.kiwiSection):''}${p.andreSection?' / '+h(p.andreSection):''}</div></div><button class="tiny-btn" onclick="deletePlacement('${h(key)}')">Slett</button></div>`).join('') || '<p class="panel-help">Ingen treff.</p>'}</div><div class="panel-actions"><button class="action-btn secondary" onclick="pruneBrokenPlacements()">Rydd tomme</button><button class="action-btn secondary" onclick="clearAllPlacements()">Slett alle</button></div></div><div class="maintenance-card"><h2>Ytelseslogg</h2>${perfLog.map(p => `<div class="placement-row"><div><strong>${h(p.label)}</strong><div class="placement-meta">${h(p.at)} ${h(p.extra)}</div></div></div>`).join('') || '<p class="panel-help">Ingen målinger ennå.</p>'}</div>`;
+  const rows = shown.map(([key, p], i) => {
+    const sel = placementSelection.has(key);
+    const meta = `${h(p.store || '-')}${p.kiwiSection ? ' / ' + h(p.kiwiSection) : ''}${p.andreSection ? ' / ' + h(p.andreSection) : ''}`;
+    return `<div class="pl-row ${sel ? 'sel' : ''}" onclick="togglePlacementSel(${i})"><div class="pl-check">${sel ? '✓' : ''}</div><div class="pl-body"><div class="pl-name">${h(key)}</div><div class="pl-meta">${meta}</div></div></div>`;
+  }).join('') || '<p class="panel-help">Ingen treff.</p>';
+  el.innerHTML =
+    `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.length}</strong><span>anledninger</span></div><div class="metric"><strong>${placements.length}</strong><span>lærte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div></div><p class="panel-help">Rydd i lærte plasseringer (hvor appen tror varer hører hjemme). Sletting her påvirker ikke varene på lista.</p></div>` +
+    `<div class="maintenance-card"><h2>Lærte plasseringer</h2>` +
+    `<input class="text-input" placeholder="Søk..." value="${h(placementSearch)}" oninput="placementSearch=this.value;renderMaintenance()">` +
+    `<div class="raid-tools"><label class="raid-toggle" onclick="toggleShowUnused()"><span class="pl-check">${placementShowUnused ? '✓' : ''}</span>Kun ubrukte (${unusedCount})</label>${shown.length ? `<button class="link-btn" onclick="selectAllShown()">${allVisibleSelected ? 'Fjern alle viste' : 'Velg alle viste'}</button>` : ''}</div>` +
+    `<div style="margin-top:6px">${rows}</div>` +
+    `<div class="panel-actions"><button class="action-btn danger" ${selCount ? '' : 'disabled'} onclick="deleteSelectedPlacements()">Slett valgte (${selCount})</button><button class="action-btn secondary" onclick="pruneBrokenPlacements()">Rydd tomme</button><button class="action-btn secondary" onclick="clearAllPlacements()">Slett alle</button></div></div>` +
+    `<div class="maintenance-card"><h2>Ytelseslogg</h2>${perfLog.map(p => `<div class="placement-row"><div><strong>${h(p.label)}</strong><div class="placement-meta">${h(p.at)} ${h(p.extra)}</div></div></div>`).join('') || '<p class="panel-help">Ingen målinger ennå.</p>'}</div>`;
+}
+function toggleShowUnused() { placementShowUnused = !placementShowUnused; renderMaintenance(); }
+function togglePlacementSel(i) { const key = placementShown[i]; if (key == null) return; if (placementSelection.has(key)) placementSelection.delete(key); else placementSelection.add(key); renderMaintenance(); }
+function selectAllShown() {
+  const allSel = placementShown.length > 0 && placementShown.every(k => placementSelection.has(k));
+  if (allSel) placementShown.forEach(k => placementSelection.delete(k));
+  else placementShown.forEach(k => placementSelection.add(k));
+  renderMaintenance();
+}
+function deleteSelectedPlacements() {
+  const n = placementSelection.size;
+  if (!n) return;
+  if (!confirm('Slette ' + n + ' lærte plasseringer?')) return;
+  placementSelection.forEach(k => delete preferences.itemPlacements[k]);
+  placementSelection.clear();
+  renderMaintenance(); renderList(); scheduleSave();
 }
 function deletePlacement(key) { delete preferences.itemPlacements[key]; renderMaintenance(); scheduleSave(); }
 function pruneBrokenPlacements() { let count = 0; Object.keys(preferences.itemPlacements || {}).forEach(key => { const p = preferences.itemPlacements[key] || {}; if (!p.store && !p.kiwiSection && !p.andreSection) { delete preferences.itemPlacements[key]; count++; } }); alert('Ryddet ' + count + ' tomme plasseringer.'); renderMaintenance(); scheduleSave(); }
