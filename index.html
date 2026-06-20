@@ -147,6 +147,17 @@
     padding: 10px 0 5px; border-bottom: 2px solid var(--border); margin-bottom: 4px; margin-top: 16px;
   }
   .section-header.in-vogna { margin-top: 32px; opacity: 0.5; }
+  .andre-bar {
+    display: flex; align-items: center; justify-content: space-between; width: 100%; text-align: left;
+    padding: 12px 14px; margin-top: 8px; border: none; border-radius: 10px; background: var(--andre);
+    font-family: 'Maple Mono', monospace; font-weight: 700; font-size: 0.85rem; letter-spacing: 0.03em;
+    color: #fff; cursor: pointer;
+  }
+  .andre-bar .andre-cnt { margin-left: auto; margin-right: 12px; opacity: 0.85; font-weight: 600; }
+  .andre-bar .andre-chev { transition: transform 0.2s; }
+  .andre-wrap.open .andre-bar { border-radius: 10px 10px 0 0; }
+  .andre-wrap.open .andre-bar .andre-chev { transform: rotate(90deg); }
+  .andre-wrap .andre-body { border: 1px solid var(--andre); border-top: none; border-radius: 0 0 10px 10px; margin-bottom: 4px; }
 
   /* ── ITEM ROW ── */
   .item-row {
@@ -524,7 +535,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.06.20 (b2)';
+const APP_VERSION = '2026.06.20 (b3)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -589,7 +600,7 @@ let addOccasionId = null;
 let currentAddSuggestions = [];
 let placementSearch = '';
 let perfLog = [];
-let collapsedSections = new Set();
+let openAndreSection = null;
 let dragSrcIdx = null;
 
 function genId() {
@@ -1215,7 +1226,7 @@ function renderGrocery(container, items) {
   container.innerHTML = html + listHtml;
   attachEvents();
 }
-function toggleAndreSection(secId) { if (collapsedSections.has(secId)) collapsedSections.delete(secId); else collapsedSections.add(secId); renderList(); }
+function toggleAndreSection(secId) { openAndreSection = (openAndreSection === secId) ? null : secId; renderList(); }
 function renderAndre(container, items) {
   const sections = {}, unknown = [], vogna = [];
   for (const item of items) {
@@ -1230,9 +1241,10 @@ function renderAndre(container, items) {
   let listHtml = '';
   andreSections.forEach(sec => {
     const sectionItems = sections[sec.id]; if (!sectionItems || !sectionItems.length) return;
-    const collapsed = collapsedSections.has(sec.id);
-    listHtml += `<div class="section-header andre-collapsible" onclick="toggleAndreSection('${h(sec.id)}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;"><span>${h(sec.label)} <span style="font-weight:400;opacity:0.6">&middot; ${sectionItems.length}</span></span><span style="font-size:0.7rem">${collapsed ? '▶' : '▼'}</span></div>`;
-    if (!collapsed) sectionItems.forEach(item => listHtml += renderItem(item, 'andre'));
+    const open = openAndreSection === sec.id;
+    let body = '';
+    if (open) { let inner = ''; sectionItems.forEach(item => inner += renderItem(item, 'andre')); body = `<div class="andre-body">${inner}</div>`; }
+    listHtml += `<div class="andre-wrap ${open ? 'open' : ''}"><button class="andre-bar" onclick="toggleAndreSection('${h(sec.id)}')"><span>${h(sec.label)}</span><span class="andre-cnt">${sectionItems.length}</span><span class="andre-chev">›</span></button>${body}</div>`;
   });
   if (unknown.length) { listHtml += '<div class="section-header">Ikke plassert</div>'; unknown.forEach(item => listHtml += renderItem(item, 'andre')); }
   if (vogna.length) { listHtml += '<div class="section-header in-vogna">Vogna</div>'; vogna.forEach(item => listHtml += renderItem(item, 'andre', true)); }
