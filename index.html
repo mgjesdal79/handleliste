@@ -80,7 +80,6 @@
   .store-btn.active[data-store="rema"]  { background: var(--rema);  border-color: var(--rema);  color: white; }
   .store-btn.active[data-store="meny"]  { background: var(--meny);  border-color: var(--meny);  color: white; }
   .store-btn.active[data-store="andre"] { background: var(--andre); border-color: var(--andre); color: white; }
-  .store-btn.active[data-store="beredskap"] { background: var(--beredskap); border-color: var(--beredskap); color: white; }
 
   .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background 0.3s; }
   .sync-dot.synced  { background: var(--kiwi); }
@@ -373,7 +372,6 @@
     </div>
     <div class="store-group">
       <button class="store-btn" data-store="andre">A</button>
-      <button class="store-btn" data-store="beredskap">B</button>
     </div>
     <button class="icon-btn" id="occasionBtn" onclick="togglePanel('occasions')">🏷️<span class="occasion-badge" id="occasionBadge"></span></button>
     <div class="sync-dot" id="syncDot"></div>
@@ -746,7 +744,8 @@ function normalizeState() {
   if (!Array.isArray(preferences.favorites)) preferences.favorites = [];
   ensureDefaultKiwiCategories();
   activeOccasionFilters = new Set([...activeOccasionFilters].filter(id => !!getOccasion(id)));
-  if (preferences.schemaVersion !== 1) migrateToSchemaV1();
+  if ((preferences.schemaVersion || 0) < 1) migrateToSchemaV1();
+  if ((preferences.schemaVersion || 0) < 2) migrateToSchemaV2();
 }
 
 function migrateToSchemaV1() {
@@ -759,6 +758,17 @@ function migrateToSchemaV1() {
   occasions.forEach(o => { delete o.notes; delete o.archived; });
   listItems.forEach(i => { delete i.contextId; });
   preferences.schemaVersion = 1;
+}
+
+function migrateToSchemaV2() {
+  // Beredskap blir en vanlig anledning i stedet for egen butikk.
+  if (!getOccasion(BEREDSKAP_OCCASION_ID)) {
+    occasions.push({ id: BEREDSKAP_OCCASION_ID, name: 'Beredskap', emoji: '🛡️', sortOrder: occasions.length, createdAt: nowIso() });
+  }
+  listItems.forEach(item => {
+    if (item.store === 'beredskap') { item.store = 'andre'; item.andreSection = item.andreSection || null; item.occasionId = BEREDSKAP_OCCASION_ID; }
+  });
+  preferences.schemaVersion = 2;
 }
 
 // SUPABASE EDGE FUNCTION FLOW
@@ -941,8 +951,7 @@ function togglePanel(name) {
   if (name === 'settings') switchTab('rom');
   if (name === 'occasions') { document.getElementById('panel-occasions').classList.add('tall'); renderOccasionPanel(); }
   if (name === 'add') {
-    if (currentStore === 'beredskap') { addGroup = 'beredskap'; addStore = 'beredskap'; }
-    else if (currentStore === 'andre') { addGroup = 'andre'; addStore = (andreSections[0] && andreSections[0].id) || 'a0'; }
+    if (currentStore === 'andre') { addGroup = 'andre'; addStore = (andreSections[0] && andreSections[0].id) || 'a0'; }
     else { addGroup = 'dagligvare'; addStore = ['kiwi','rema','meny'].includes(currentStore) ? currentStore : 'kiwi'; }
     addOccasionId = (activeOccasionFilters.size === 1 ? [...activeOccasionFilters][0] : null);
     renderAddPanel();
@@ -961,13 +970,11 @@ function renderAddPanel() {
   const meta = document.getElementById('addMetaSelectorInner');
   if (!el) return;
   const secs = andreSections.length ? andreSections : defaultAndreSections;
-  const stores = addGroup === 'beredskap'
-    ? []
-    : addGroup === 'dagligvare'
-      ? [{id:'kiwi',label:'Kiwi',color:'#2d8a3e'},{id:'rema',label:'Rema',color:'#003087'},{id:'meny',label:'Mega/Meny',color:'#d46000'}]
-      : secs.map(s => ({id:s.id,label:s.label,color:'#7c5cbf'}));
+  const stores = addGroup === 'dagligvare'
+    ? [{id:'kiwi',label:'Kiwi',color:'#2d8a3e'},{id:'rema',label:'Rema',color:'#003087'},{id:'meny',label:'Mega/Meny',color:'#d46000'}]
+    : secs.map(s => ({id:s.id,label:s.label,color:'#7c5cbf'}));
   el.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-      ${[['dagligvare','Dagligvare'],['andre','Andre butikker'],['beredskap','Beredskap']].map(([g,lbl]) => `<button onclick="selectAddGroup('${g}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addGroup===g?'#1a1814':'#e0d9ce'};background:${addGroup===g?'#1a1814':'transparent'};color:${addGroup===g?'white':'#8a8070'};font-family:'Maple Mono',monospace;font-weight:600;font-size:0.8rem;cursor:pointer;">${lbl}</button>`).join('')}
+      ${[['dagligvare','Dagligvare'],['andre','Andre butikker']].map(([g,lbl]) => `<button onclick="selectAddGroup('${g}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addGroup===g?'#1a1814':'#e0d9ce'};background:${addGroup===g?'#1a1814':'transparent'};color:${addGroup===g?'white':'#8a8070'};font-family:'Maple Mono',monospace;font-weight:600;font-size:0.8rem;cursor:pointer;">${lbl}</button>`).join('')}
     </div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       ${stores.map(s => `<button onclick="selectAddStore('${s.id}')" style="padding:7px 14px;border-radius:100px;border:2px solid ${addStore===s.id?s.color:'#e0d9ce'};background:${addStore===s.id?s.color:'transparent'};color:${addStore===s.id?'white':'#8a8070'};font-family:'Maple Mono',monospace;font-weight:600;font-size:0.8rem;cursor:pointer;">${h(s.label)}</button>`).join('')}
     </div>`;
@@ -981,8 +988,7 @@ function renderAddPanel() {
 }
 function selectAddGroup(group) {
   addGroup = group;
-  if (group === 'beredskap') addStore = 'beredskap';
-  else if (group === 'dagligvare') { if (!['kiwi','rema','meny'].includes(addStore)) addStore = 'kiwi'; }
+  if (group === 'dagligvare') { if (!['kiwi','rema','meny'].includes(addStore)) addStore = 'kiwi'; }
   else addStore = (andreSections[0] && andreSections[0].id) || 'a0';
   renderAddPanel();
 }
@@ -991,9 +997,9 @@ function addItems() {
   const textarea = document.getElementById('addInput');
   const raw = textarea.value.trim();
   if (!raw) { closePanel(); return; }
-  const storeValue = addGroup === 'andre' ? 'andre' : addGroup === 'beredskap' ? 'beredskap' : addStore;
+  const storeValue = addGroup === 'andre' ? 'andre' : addStore;
   const andreSection = addGroup === 'andre' ? addStore : null;
-  const validAddOccasionId = addGroup === 'beredskap' ? null : (getOccasion(addOccasionId) ? addOccasionId : null);
+  const validAddOccasionId = getOccasion(addOccasionId) ? addOccasionId : null;
   raw.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
     listItems.push({ id: genId(), text: line, store: storeValue, kiwiSection: null, andreSection, checked: false, occasionId: validAddOccasionId, createdAt: nowIso() });
   });
@@ -1128,9 +1134,8 @@ function renderList() {
   const scoped = getScopedItems();
   bottomBar.style.display = scoped.some(i => i.checked) ? 'flex' : 'none';
   const occBtn = document.getElementById('occasionBtn');
-  if (occBtn) occBtn.style.display = currentStore === 'beredskap' ? 'none' : 'inline-flex';
-  if (currentStore === 'beredskap') renderBeredskap(container, scoped);
-  else if (currentStore === 'andre') renderAndre(container, scoped);
+  if (occBtn) occBtn.style.display = 'inline-flex';
+  if (currentStore === 'andre') renderAndre(container, scoped);
   else renderGrocery(container, scoped);
   updateOccasionBadge();
   markPerf('Render', Math.round(performance.now() - start) + ' ms');
@@ -1200,22 +1205,6 @@ function renderAndre(container, items) {
   container.innerHTML = html + listHtml;
   attachEvents();
 }
-function renderBeredskap(container, items) {
-  const active = [], vogna = [];
-  for (const item of items) {
-    if (item.store !== 'beredskap') continue;
-    if (item.checked) vogna.push(item); else active.push(item);
-  }
-  let listHtml = '';
-  active.forEach(item => listHtml += renderItem(item, 'beredskap'));
-  if (vogna.length) {
-    listHtml += '<div class="section-header in-vogna">Vogna</div>';
-    vogna.forEach(item => listHtml += renderItem(item, 'beredskap', true));
-  }
-  if (!listHtml) listHtml = '<div class="empty-state"><div class="emoji">&#128270;</div><p>Ingen beredskapsvarer enn&aring;. Trykk <strong>+</strong> for &aring; legge til.</p></div>';
-  container.innerHTML = listHtml;
-  attachEvents();
-}
 function updateOccasionBadge() {
   const b = document.getElementById('occasionBadge');
   if (!b) return;
@@ -1263,11 +1252,10 @@ function openItemDrawer(itemId) {
   requestAnimationFrame(() => { if (modal) modal.scrollTop = 0; });
 }
 function renderStorePicker(item) {
-  const stores = [{id:'kiwi',label:'Kiwi',color:'#1e7a2e'},{id:'rema',label:'Rema',color:'#002070'},{id:'meny',label:'Mega/Meny',color:'#d46000'},{id:'andre',label:'Andre',color:'#6040b0'},{id:'beredskap',label:'Beredskap',color:'#b23b3b'}];
+  const stores = [{id:'kiwi',label:'Kiwi',color:'#1e7a2e'},{id:'rema',label:'Rema',color:'#002070'},{id:'meny',label:'Mega/Meny',color:'#d46000'},{id:'andre',label:'Andre',color:'#6040b0'}];
   document.getElementById('storePickerSection').innerHTML = `<div class="field-label">Hvilken butikk?</div>` + stores.map(s => `<button onclick="setItemStore('${h(item.id)}','${s.id}')" style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:5px;border-radius:8px;border:1px solid ${item.store===s.id?s.color:'#d4cabf'};background:${item.store===s.id?s.color+'18':'transparent'};font-family:'DM Sans',sans-serif;font-size:0.9rem;cursor:pointer;color:#0f0e0b;font-weight:${item.store===s.id?'600':'400'}">${h(s.label)}${item.store===s.id?' ✓':''}</button>`).join('');
 }
 function renderSectionOptions(item) {
-  if (item.store === 'beredskap') { document.getElementById('sectionOptions').innerHTML = ''; return; }
   const isAndre = item.store === 'andre';
   const sections = isAndre ? andreSections : kiwiSections;
   const saved = getSavedPlacement(item.text);
@@ -1285,7 +1273,6 @@ function setItemStore(itemId, store) {
   if (!item) return;
   item.store = store;
   if (store === 'andre') { item.kiwiSection = null; }
-  else if (store === 'beredskap') { item.kiwiSection = null; item.andreSection = null; }
   else { item.andreSection = null; }
   rememberPlacement(item);
   openItemDrawer(itemId);

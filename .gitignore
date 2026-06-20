@@ -3,3 +3,5 @@ eksport
 backup-eksport-*.json
 docs/
 test/
+CLAUDE.md
+.superpowers/
