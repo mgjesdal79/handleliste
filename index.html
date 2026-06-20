@@ -535,7 +535,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.06.20 (b6)';
+const APP_VERSION = '2026.06.20 (b7)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -1206,7 +1206,8 @@ function renderGrocery(container, items) {
   for (const item of items) {
     if (item.store === 'andre') continue;
     const saved = getSavedPlacement(item.text);
-    const sectionId = item.kiwiSection || saved?.kiwiSection || null;
+    let sectionId = item.kiwiSection || saved?.kiwiSection || null;
+    if (sectionId && !kiwiSections.some(s => s.id === sectionId)) sectionId = null;
     const highlight = item.store === currentStore;
     if (item.checked) { vogna.push({ ...item, sectionId, highlight }); continue; }
     if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId, highlight }); }
@@ -1232,7 +1233,8 @@ function renderAndre(container, items) {
   for (const item of items) {
     if (item.store !== 'andre') continue;
     const saved = getSavedPlacement(item.text);
-    const sectionId = item.andreSection || saved?.andreSection || null;
+    let sectionId = item.andreSection || saved?.andreSection || null;
+    if (sectionId && !andreSections.some(s => s.id === sectionId)) sectionId = null;
     if (item.checked) { vogna.push({ ...item, sectionId }); continue; }
     if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId }); }
     else unknown.push({ ...item });
