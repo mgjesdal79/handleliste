@@ -169,7 +169,7 @@
     display: flex; align-items: center; gap: 10px;
     flex: 1; padding: 8px 10px; cursor: pointer; transition: background 0.15s;
   }
-  .item-row:hover .item-main { background: var(--bg); }
+  @media (hover: hover) { .item-row:hover .item-main { background: rgba(15,14,11,0.05); } }
   .item-row.highlighted { border-color: transparent; }
   .item-row.highlighted[data-store="kiwi"]  { background: var(--hi-kiwi);  border-color: var(--hi-kiwi-b); }
   .item-row.highlighted[data-store="rema"]  { background: var(--hi-rema);  border-color: var(--hi-rema-b); }
@@ -534,7 +534,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.06.20 (b4)';
+const APP_VERSION = '2026.06.20 (b5)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
