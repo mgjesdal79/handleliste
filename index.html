@@ -221,7 +221,12 @@
   .bottom-bar {
     position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface);
     border-top: 1px solid var(--border); padding: 10px 16px; display: flex; gap: 8px;
-    max-width: 640px; margin: 0 auto;
+    max-width: 640px; margin: 0 auto; z-index: 20;
+  }
+  .app-version {
+    position: fixed; bottom: 3px; left: 0; right: 0; text-align: center;
+    font-family: 'Maple Mono', monospace; font-size: 0.6rem; color: var(--muted);
+    opacity: 0.5; pointer-events: none; z-index: 1;
   }
   .bottom-btn {
     flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
@@ -482,6 +487,7 @@
   <div class="bottom-bar" id="bottomBar" style="display:none">
     <button class="bottom-btn danger" onclick="toemVogna()">Tøm Vognå</button>
   </div>
+  <div class="app-version" id="appVersion"></div>
 </div>
 
 <!-- CONFIRM MODAL -->
@@ -518,6 +524,7 @@
 
 <script>
 // CONFIG
+const APP_VERSION = '2026.06.20 (b1)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -1361,6 +1368,7 @@ function guessSection(text, sections) { return null; }
 
 // INIT
 markPerf('Init');
+{ const av = document.getElementById('appVersion'); if (av) av.textContent = 'v' + APP_VERSION; }
 const savedRoom = getSavedRoomCode();
 if (savedRoom) {
   document.getElementById('roomScreen').classList.add('hidden');
