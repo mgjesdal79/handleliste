@@ -556,7 +556,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.06.20 (b9)';
+const APP_VERSION = '2026.06.20 (b10)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -1460,9 +1460,14 @@ function setStoreForItem() {}
 function assignSection() {}
 function guessSection(text, sections) { return null; }
 
-// Lukk åpent panel ved trykk utenfor header (panelene ligger i .app-header)
+// Lukk åpent panel ved trykk utenfor header (panelene ligger i .app-header).
+// Bruker composedPath() fordi en knapp inne i panelet kan re-rendre panelet og
+// løsrive e.target før denne lytteren kjører – da ville closest() feilaktig si «utenfor».
 document.addEventListener('click', e => {
-  if (openPanel && !e.target.closest('.app-header')) closePanel();
+  if (!openPanel) return;
+  const path = (typeof e.composedPath === 'function') ? e.composedPath() : [];
+  const inHeader = path.some(n => n && n.classList && n.classList.contains('app-header'));
+  if (!inHeader && !(e.target.closest && e.target.closest('.app-header'))) closePanel();
 });
 
 // INIT
