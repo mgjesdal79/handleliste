@@ -793,12 +793,15 @@ function normalizeState() {
   });
   if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
   if (!preferences.itemPlacements || typeof preferences.itemPlacements !== 'object') preferences.itemPlacements = {};
-  if (!Array.isArray(preferences.favorites)) preferences.favorites = [];
+  if (preferences.favorites == null) preferences.favorites = {};
   ensureDefaultKiwiCategories();
   activeOccasionFilters = new Set([...activeOccasionFilters].filter(id => !!getOccasion(id)));
   if ((preferences.schemaVersion || 0) < 1) migrateToSchemaV1();
   if ((preferences.schemaVersion || 0) < 2) migrateToSchemaV2();
   if ((preferences.schemaVersion || 0) < 3) migrateToSchemaV3();
+  if ((preferences.schemaVersion || 0) < 4) migrateToSchemaV4();
+  gcTombstones(preferences.favorites);
+  gcTombstones(preferences.itemPlacements);
 }
 
 function migrateToSchemaV1() {
@@ -831,6 +834,31 @@ function migrateToSchemaV3() {
     if (item.occasionId === BEREDSKAP_OCCASION_ID) { item.store = 'kiwi'; item.andreSection = null; }
   });
   preferences.schemaVersion = 3;
+}
+
+function migrateToSchemaV4() {
+  // favorites: string[] -> kart nøklet på normalisert navn med updatedAt + deleted-gravstein.
+  if (Array.isArray(preferences.favorites)) {
+    const map = {};
+    preferences.favorites.forEach(f => {
+      const k = normalizeItemName(f);
+      if (k) map[k] = { text: String(f).trim(), updatedAt: nowIso(), deleted: false };
+    });
+    preferences.favorites = map;
+  } else if (!preferences.favorites || typeof preferences.favorites !== 'object') {
+    preferences.favorites = {};
+  }
+  // itemPlacements er allerede et kart; manglende `deleted` tolkes som levende.
+  preferences.schemaVersion = 4;
+}
+
+function gcTombstones(map) {
+  if (!map || typeof map !== 'object') return;
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  Object.keys(map).forEach(k => {
+    const e = map[k];
+    if (e && e.deleted && (Date.parse(e.updatedAt) || 0) < cutoff) delete map[k];
+  });
 }
 
 // SUPABASE EDGE FUNCTION FLOW
