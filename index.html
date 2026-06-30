@@ -745,7 +745,12 @@ function getLocalHash() {
   return JSON.stringify({ items: listItems, occasions }) + JSON.stringify({ kiwi: kiwiSections, andre: andreSections }) + JSON.stringify(preferences || {});
 }
 function mapSig(map) {
-  return Object.keys(map || {}).sort().map(k => k + ':' + JSON.stringify(map[k])).join('|');
+  // Sorter både nøkler og hver oppførings egne felt, så signaturen er uavhengig av
+  // objekt-nøkkelrekkefølge (unngår falske «endret»-treff → unødvendige lagringer).
+  return Object.keys(map || {}).sort().map(k => {
+    const e = map[k];
+    return k + ':' + (e && typeof e === 'object' ? JSON.stringify(e, Object.keys(e).sort()) : JSON.stringify(e));
+  }).join('|');
 }
 function mergeLwwMap(local, remote) {
   const out = {};
