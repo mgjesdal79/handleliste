@@ -1242,11 +1242,12 @@ function deleteOccasion(id) {
 }
 
 // RENDERING
-function getSavedPlacement(text) { return preferences.itemPlacements[normalizeItemName(text)] || null; }
+function tombstoneEntry(map, key) { const e = map[key]; if (e && !e.deleted) { e.deleted = true; e.updatedAt = nowIso(); } }
+function getSavedPlacement(text) { const e = preferences.itemPlacements[normalizeItemName(text)]; return (e && !e.deleted) ? e : null; }
 function rememberPlacement(item) {
   const key = normalizeItemName(item.text);
   if (!key) return;
-  preferences.itemPlacements[key] = { store: item.store, kiwiSection: item.kiwiSection || null, andreSection: item.andreSection || null, updatedAt: nowIso() };
+  preferences.itemPlacements[key] = { store: item.store, kiwiSection: item.kiwiSection || null, andreSection: item.andreSection || null, updatedAt: nowIso(), deleted: false };
 }
 function isInActiveShoppingScope(item) {
   if (hasActiveOccasionFilters()) return !item.occasionId || activeOccasionFilters.has(item.occasionId);
@@ -1456,8 +1457,9 @@ function toemVogna() {
 function nyHandel() { document.getElementById('confirmModal').classList.remove('open'); listItems = []; renderList(); scheduleSave(); }
 function isPlacementUnused(key) {
   const onList = listItems.some(i => normalizeItemName(i.text) === key);
-  const fav = (preferences.favorites || []).some(f => normalizeItemName(f) === key);
-  return !onList && !fav;
+  const f = preferences.favorites[key];
+  const favActive = !!f && !f.deleted;
+  return !onList && !favActive;
 }
 function renderMaintenance() {
   const el = document.getElementById('maintenancePanel');
@@ -1500,13 +1502,13 @@ function deleteSelectedPlacements() {
   const n = placementSelection.size;
   if (!n) return;
   if (!confirm('Slette ' + n + ' lærte plasseringer?')) return;
-  placementSelection.forEach(k => delete preferences.itemPlacements[k]);
+  placementSelection.forEach(k => tombstoneEntry(preferences.itemPlacements, k));
   placementSelection.clear();
   renderMaintenance(); renderList(); scheduleSave();
 }
-function deletePlacement(key) { delete preferences.itemPlacements[key]; renderMaintenance(); scheduleSave(); }
-function pruneBrokenPlacements() { let count = 0; Object.keys(preferences.itemPlacements || {}).forEach(key => { const p = preferences.itemPlacements[key] || {}; if (!p.store && !p.kiwiSection && !p.andreSection) { delete preferences.itemPlacements[key]; count++; } }); alert('Ryddet ' + count + ' tomme plasseringer.'); renderMaintenance(); scheduleSave(); }
-function clearAllPlacements() { if (!confirm('Slette alle lærte plasseringer?')) return; preferences.itemPlacements = {}; renderMaintenance(); renderList(); scheduleSave(); }
+function deletePlacement(key) { tombstoneEntry(preferences.itemPlacements, key); renderMaintenance(); scheduleSave(); }
+function pruneBrokenPlacements() { let count = 0; Object.keys(preferences.itemPlacements || {}).forEach(key => { const p = preferences.itemPlacements[key] || {}; if (!p.deleted && !p.store && !p.kiwiSection && !p.andreSection) { tombstoneEntry(preferences.itemPlacements, key); count++; } }); alert('Ryddet ' + count + ' tomme plasseringer.'); renderMaintenance(); scheduleSave(); }
+function clearAllPlacements() { if (!confirm('Slette alle lærte plasseringer?')) return; Object.keys(preferences.itemPlacements || {}).forEach(k => tombstoneEntry(preferences.itemPlacements, k)); renderMaintenance(); renderList(); scheduleSave(); }
 function doExport() { document.getElementById('exportText').value = JSON.stringify({ items: listItems, occasions, kiwi: kiwiSections, andre: andreSections, preferences }, null, 2); }
 function copyExport() { if (!document.getElementById('exportText').value) doExport(); const ta = document.getElementById('exportText'); ta.select(); document.execCommand('copy'); const btn = document.querySelector('#tab-export .action-btn.secondary'); const old = btn.textContent; btn.textContent = 'Kopiert'; setTimeout(() => btn.textContent = old, 2000); }
 function doImport() { try { const p = JSON.parse(document.getElementById('importText').value.trim()); if (p.items) listItems = p.items; if (p.occasions) occasions = p.occasions; if (p.kiwi) kiwiSections.splice(0, kiwiSections.length, ...p.kiwi); if (p.andre) andreSections.splice(0, andreSections.length, ...p.andre); if (p.preferences) preferences = p.preferences; normalizeState(); document.getElementById('importText').value = ''; closePanel(); renderList(); scheduleSave(); } catch(e) { alert('Feil format.'); } }
