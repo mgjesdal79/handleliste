@@ -643,22 +643,24 @@ function parseMaybeJson(value, fallback) {
 }
 function normalizeItemName(text) { return String(text || '').toLowerCase().trim().replace(/\s+/g, ' '); }
 function isFavorite(text) {
-  const k = normalizeItemName(text);
-  return !!k && preferences.favorites.some(f => normalizeItemName(f) === k);
+  const e = preferences.favorites[normalizeItemName(text)];
+  return !!e && !e.deleted;
 }
 function toggleFavorite(text) {
   const k = normalizeItemName(text);
   if (!k) return;
-  const i = preferences.favorites.findIndex(f => normalizeItemName(f) === k);
-  if (i >= 0) preferences.favorites.splice(i, 1); else preferences.favorites.push(text.trim());
+  const e = preferences.favorites[k];
+  if (e && !e.deleted) { e.deleted = true; e.updatedAt = nowIso(); }
+  else { preferences.favorites[k] = { text: text.trim(), updatedAt: nowIso(), deleted: false }; }
 }
 function matchFavorites(query) {
   const q = normalizeItemName(query);
   if (!q) return [];
-  return preferences.favorites
-    .filter(f => normalizeItemName(f).includes(q))
-    .sort((a, b) => (normalizeItemName(a).startsWith(q) ? 0 : 1) - (normalizeItemName(b).startsWith(q) ? 0 : 1))
-    .slice(0, 6);
+  return Object.values(preferences.favorites)
+    .filter(e => e && !e.deleted && normalizeItemName(e.text).includes(q))
+    .sort((a, b) => (normalizeItemName(a.text).startsWith(q) ? 0 : 1) - (normalizeItemName(b.text).startsWith(q) ? 0 : 1))
+    .slice(0, 6)
+    .map(e => e.text);
 }
 function renderFavoriteToggle(item) {
   const el = document.getElementById('itemFavoriteRow');
