@@ -556,7 +556,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.06.30 (b11)';
+const APP_VERSION = '2026.06.30 (b12)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -771,6 +771,21 @@ function mergeLwwMap(local, remote) {
   }
   return out;
 }
+function favoritesAsMap(fav) {
+  // Tvinger favoritter til kart { normNavn: {text, updatedAt, deleted} }. Tåler alle former:
+  // gammelt string-array, korrupt indeks-nøklet objekt med strengverdier, eller riktig kart.
+  // Idempotent på riktige kart (bevarer updatedAt) – trygt å kjøre på hver innlasting.
+  const out = {};
+  if (Array.isArray(fav)) {
+    fav.forEach(f => { const k = normalizeItemName(f); if (k) out[k] = { text: String(f).trim(), updatedAt: nowIso(), deleted: false }; });
+  } else if (fav && typeof fav === 'object') {
+    Object.entries(fav).forEach(([key, e]) => {
+      if (typeof e === 'string') { const k = normalizeItemName(e); if (k) out[k] = { text: e.trim(), updatedAt: nowIso(), deleted: false }; }
+      else if (e && typeof e === 'object' && typeof e.text === 'string') { out[key] = { text: e.text, updatedAt: e.updatedAt || nowIso(), deleted: !!e.deleted }; }
+    });
+  }
+  return out;
+}
 
 function ensureDefaultKiwiCategories() {
   if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
@@ -864,17 +879,9 @@ function migrateToSchemaV3() {
 }
 
 function migrateToSchemaV4() {
-  // favorites: string[] -> kart nøklet på normalisert navn med updatedAt + deleted-gravstein.
-  if (Array.isArray(preferences.favorites)) {
-    const map = {};
-    preferences.favorites.forEach(f => {
-      const k = normalizeItemName(f);
-      if (k) map[k] = { text: String(f).trim(), updatedAt: nowIso(), deleted: false };
-    });
-    preferences.favorites = map;
-  } else if (!preferences.favorites || typeof preferences.favorites !== 'object') {
-    preferences.favorites = {};
-  }
+  // favorites -> kart { normNavn: {text, updatedAt, deleted} }. favoritesAsMap tåler array,
+  // korrupt indeks-nøklet objekt og riktig kart (idempotent).
+  preferences.favorites = favoritesAsMap(preferences.favorites);
   // itemPlacements er allerede et kart; manglende `deleted` tolkes som levende.
   preferences.schemaVersion = 4;
 }
@@ -969,7 +976,7 @@ function loadFromRow(row) {
   }
   const remotePrefs = parseMaybeJson(row?.preferences, {});
   const localPrefs = (preferences && typeof preferences === 'object') ? preferences : {};
-  const mergedFav = mergeLwwMap(localPrefs.favorites, remotePrefs.favorites);
+  const mergedFav = mergeLwwMap(favoritesAsMap(localPrefs.favorites), favoritesAsMap(remotePrefs.favorites));
   const mergedPl = mergeLwwMap(localPrefs.itemPlacements, remotePrefs.itemPlacements);
   const mergeAddedLocal =
     mapSig(mergedFav) !== mapSig(remotePrefs.favorites) ||
