@@ -744,6 +744,23 @@ function getRowHash(row) {
 function getLocalHash() {
   return JSON.stringify({ items: listItems, occasions }) + JSON.stringify({ kiwi: kiwiSections, andre: andreSections }) + JSON.stringify(preferences || {});
 }
+function mapSig(map) {
+  return Object.keys(map || {}).sort().map(k => k + ':' + JSON.stringify(map[k])).join('|');
+}
+function mergeLwwMap(local, remote) {
+  const out = {};
+  const keys = new Set([...Object.keys(local || {}), ...Object.keys(remote || {})]);
+  for (const k of keys) {
+    const a = local && local[k], b = remote && remote[k];
+    if (!a) { out[k] = b; continue; }
+    if (!b) { out[k] = a; continue; }
+    const ta = Date.parse(a.updatedAt) || 0, tb = Date.parse(b.updatedAt) || 0;
+    if (tb > ta) out[k] = b;
+    else if (ta > tb) out[k] = a;
+    else out[k] = (a.deleted || b.deleted) ? { ...a, deleted: true } : a; // uavgjort: sletting vinner
+  }
+  return out;
+}
 
 function ensureDefaultKiwiCategories() {
   if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
@@ -940,15 +957,22 @@ function loadFromRow(row) {
     if (Array.isArray(cats.kiwi)) kiwiSections.splice(0, kiwiSections.length, ...cats.kiwi);
     if (Array.isArray(cats.andre)) andreSections.splice(0, andreSections.length, ...cats.andre);
   }
-  preferences = parseMaybeJson(row?.preferences, { itemPlacements: {} });
+  const remotePrefs = parseMaybeJson(row?.preferences, {});
+  const localPrefs = (preferences && typeof preferences === 'object') ? preferences : {};
+  const mergedFav = mergeLwwMap(localPrefs.favorites, remotePrefs.favorites);
+  const mergedPl = mergeLwwMap(localPrefs.itemPlacements, remotePrefs.itemPlacements);
+  const mergeAddedLocal =
+    mapSig(mergedFav) !== mapSig(remotePrefs.favorites) ||
+    mapSig(mergedPl) !== mapSig(remotePrefs.itemPlacements);
+  preferences = { ...remotePrefs, favorites: mergedFav, itemPlacements: mergedPl };
   const schemaBefore = (preferences && preferences.schemaVersion) || 0;
   normalizeState();
   lastDataHash = getRowHash(row);
   localDirtySinceLoad = false;
   saveRoomCache(rowFromState());
   markPerf('Parse/cache', bytesOf(JSON.stringify(rowFromState())) + ' bytes');
-  // Persistér migrert data til skyen så fiksen faktisk lagres (ikke bare i minnet).
-  if (((preferences.schemaVersion) || 0) !== schemaBefore && currentRoomCode) scheduleSave();
+  // Persistér til skyen hvis migrering eller fletting endret tilstanden (så det ikke bare ligger i minnet).
+  if (currentRoomCode && (mergeAddedLocal || ((preferences.schemaVersion) || 0) !== schemaBefore)) scheduleSave();
 }
 function showApp() {
   document.getElementById('roomScreen').classList.add('hidden');
