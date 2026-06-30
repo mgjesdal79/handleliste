@@ -556,7 +556,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.06.20 (b10)';
+const APP_VERSION = '2026.06.30 (b11)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -623,6 +623,9 @@ let placementSearch = '';
 let placementShowUnused = false;
 let placementSelection = new Set();
 let placementShown = [];
+let favoriteSearch = '';
+let favoriteSelection = new Set();
+let favoriteShown = [];
 let perfLog = [];
 let openAndreSection = null;
 let dragSrcIdx = null;
@@ -643,22 +646,24 @@ function parseMaybeJson(value, fallback) {
 }
 function normalizeItemName(text) { return String(text || '').toLowerCase().trim().replace(/\s+/g, ' '); }
 function isFavorite(text) {
-  const k = normalizeItemName(text);
-  return !!k && preferences.favorites.some(f => normalizeItemName(f) === k);
+  const e = preferences.favorites[normalizeItemName(text)];
+  return !!e && !e.deleted;
 }
 function toggleFavorite(text) {
   const k = normalizeItemName(text);
   if (!k) return;
-  const i = preferences.favorites.findIndex(f => normalizeItemName(f) === k);
-  if (i >= 0) preferences.favorites.splice(i, 1); else preferences.favorites.push(text.trim());
+  const e = preferences.favorites[k];
+  if (e && !e.deleted) tombstoneEntry(preferences.favorites, k);
+  else preferences.favorites[k] = { text: text.trim(), updatedAt: nowIso(), deleted: false };
 }
 function matchFavorites(query) {
   const q = normalizeItemName(query);
   if (!q) return [];
-  return preferences.favorites
-    .filter(f => normalizeItemName(f).includes(q))
-    .sort((a, b) => (normalizeItemName(a).startsWith(q) ? 0 : 1) - (normalizeItemName(b).startsWith(q) ? 0 : 1))
-    .slice(0, 6);
+  return Object.values(preferences.favorites)
+    .filter(e => e && !e.deleted && normalizeItemName(e.text).includes(q))
+    .sort((a, b) => (normalizeItemName(a.text).startsWith(q) ? 0 : 1) - (normalizeItemName(b.text).startsWith(q) ? 0 : 1))
+    .slice(0, 6)
+    .map(e => e.text);
 }
 function renderFavoriteToggle(item) {
   const el = document.getElementById('itemFavoriteRow');
@@ -744,6 +749,28 @@ function getRowHash(row) {
 function getLocalHash() {
   return JSON.stringify({ items: listItems, occasions }) + JSON.stringify({ kiwi: kiwiSections, andre: andreSections }) + JSON.stringify(preferences || {});
 }
+function mapSig(map) {
+  // Sorter både nøkler og hver oppførings egne felt, så signaturen er uavhengig av
+  // objekt-nøkkelrekkefølge (unngår falske «endret»-treff → unødvendige lagringer).
+  return Object.keys(map || {}).sort().map(k => {
+    const e = map[k];
+    return k + ':' + (e && typeof e === 'object' ? JSON.stringify(e, Object.keys(e).sort()) : JSON.stringify(e));
+  }).join('|');
+}
+function mergeLwwMap(local, remote) {
+  const out = {};
+  const keys = new Set([...Object.keys(local || {}), ...Object.keys(remote || {})]);
+  for (const k of keys) {
+    const a = local && local[k], b = remote && remote[k];
+    if (!a) { out[k] = b; continue; }
+    if (!b) { out[k] = a; continue; }
+    const ta = Date.parse(a.updatedAt) || 0, tb = Date.parse(b.updatedAt) || 0;
+    if (tb > ta) out[k] = b;
+    else if (ta > tb) out[k] = a;
+    else out[k] = (a.deleted || b.deleted) ? { ...a, deleted: true } : a; // uavgjort: sletting vinner
+  }
+  return out;
+}
 
 function ensureDefaultKiwiCategories() {
   if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
@@ -793,12 +820,15 @@ function normalizeState() {
   });
   if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
   if (!preferences.itemPlacements || typeof preferences.itemPlacements !== 'object') preferences.itemPlacements = {};
-  if (!Array.isArray(preferences.favorites)) preferences.favorites = [];
+  if (preferences.favorites == null) preferences.favorites = {};
   ensureDefaultKiwiCategories();
   activeOccasionFilters = new Set([...activeOccasionFilters].filter(id => !!getOccasion(id)));
   if ((preferences.schemaVersion || 0) < 1) migrateToSchemaV1();
   if ((preferences.schemaVersion || 0) < 2) migrateToSchemaV2();
   if ((preferences.schemaVersion || 0) < 3) migrateToSchemaV3();
+  if ((preferences.schemaVersion || 0) < 4) migrateToSchemaV4();
+  gcTombstones(preferences.favorites);
+  gcTombstones(preferences.itemPlacements);
 }
 
 function migrateToSchemaV1() {
@@ -831,6 +861,31 @@ function migrateToSchemaV3() {
     if (item.occasionId === BEREDSKAP_OCCASION_ID) { item.store = 'kiwi'; item.andreSection = null; }
   });
   preferences.schemaVersion = 3;
+}
+
+function migrateToSchemaV4() {
+  // favorites: string[] -> kart nøklet på normalisert navn med updatedAt + deleted-gravstein.
+  if (Array.isArray(preferences.favorites)) {
+    const map = {};
+    preferences.favorites.forEach(f => {
+      const k = normalizeItemName(f);
+      if (k) map[k] = { text: String(f).trim(), updatedAt: nowIso(), deleted: false };
+    });
+    preferences.favorites = map;
+  } else if (!preferences.favorites || typeof preferences.favorites !== 'object') {
+    preferences.favorites = {};
+  }
+  // itemPlacements er allerede et kart; manglende `deleted` tolkes som levende.
+  preferences.schemaVersion = 4;
+}
+
+function gcTombstones(map) {
+  if (!map || typeof map !== 'object') return;
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  Object.keys(map).forEach(k => {
+    const e = map[k];
+    if (e && e.deleted && (Date.parse(e.updatedAt) || 0) < cutoff) delete map[k];
+  });
 }
 
 // SUPABASE EDGE FUNCTION FLOW
@@ -912,15 +967,22 @@ function loadFromRow(row) {
     if (Array.isArray(cats.kiwi)) kiwiSections.splice(0, kiwiSections.length, ...cats.kiwi);
     if (Array.isArray(cats.andre)) andreSections.splice(0, andreSections.length, ...cats.andre);
   }
-  preferences = parseMaybeJson(row?.preferences, { itemPlacements: {} });
+  const remotePrefs = parseMaybeJson(row?.preferences, {});
+  const localPrefs = (preferences && typeof preferences === 'object') ? preferences : {};
+  const mergedFav = mergeLwwMap(localPrefs.favorites, remotePrefs.favorites);
+  const mergedPl = mergeLwwMap(localPrefs.itemPlacements, remotePrefs.itemPlacements);
+  const mergeAddedLocal =
+    mapSig(mergedFav) !== mapSig(remotePrefs.favorites) ||
+    mapSig(mergedPl) !== mapSig(remotePrefs.itemPlacements);
+  preferences = { ...remotePrefs, favorites: mergedFav, itemPlacements: mergedPl };
   const schemaBefore = (preferences && preferences.schemaVersion) || 0;
   normalizeState();
   lastDataHash = getRowHash(row);
   localDirtySinceLoad = false;
   saveRoomCache(rowFromState());
   markPerf('Parse/cache', bytesOf(JSON.stringify(rowFromState())) + ' bytes');
-  // Persistér migrert data til skyen så fiksen faktisk lagres (ikke bare i minnet).
-  if (((preferences.schemaVersion) || 0) !== schemaBefore && currentRoomCode) scheduleSave();
+  // Persistér til skyen hvis migrering eller fletting endret tilstanden (så det ikke bare ligger i minnet).
+  if (currentRoomCode && (mergeAddedLocal || ((preferences.schemaVersion) || 0) !== schemaBefore)) scheduleSave();
 }
 function showApp() {
   document.getElementById('roomScreen').classList.add('hidden');
@@ -1183,11 +1245,12 @@ function deleteOccasion(id) {
 }
 
 // RENDERING
-function getSavedPlacement(text) { return preferences.itemPlacements[normalizeItemName(text)] || null; }
+function tombstoneEntry(map, key) { const e = map[key]; if (e && !e.deleted) { e.deleted = true; e.updatedAt = nowIso(); } }
+function getSavedPlacement(text) { const e = preferences.itemPlacements[normalizeItemName(text)]; return (e && !e.deleted) ? e : null; }
 function rememberPlacement(item) {
   const key = normalizeItemName(item.text);
   if (!key) return;
-  preferences.itemPlacements[key] = { store: item.store, kiwiSection: item.kiwiSection || null, andreSection: item.andreSection || null, updatedAt: nowIso() };
+  preferences.itemPlacements[key] = { store: item.store, kiwiSection: item.kiwiSection || null, andreSection: item.andreSection || null, updatedAt: nowIso(), deleted: false };
 }
 function isInActiveShoppingScope(item) {
   if (hasActiveOccasionFilters()) return !item.occasionId || activeOccasionFilters.has(item.occasionId);
@@ -1397,15 +1460,16 @@ function toemVogna() {
 function nyHandel() { document.getElementById('confirmModal').classList.remove('open'); listItems = []; renderList(); scheduleSave(); }
 function isPlacementUnused(key) {
   const onList = listItems.some(i => normalizeItemName(i.text) === key);
-  const fav = (preferences.favorites || []).some(f => normalizeItemName(f) === key);
-  return !onList && !fav;
+  const f = preferences.favorites[key];
+  const favActive = !!f && !f.deleted;
+  return !onList && !favActive;
 }
 function renderMaintenance() {
   const el = document.getElementById('maintenancePanel');
   if (!el) return;
-  const placements = Object.entries(preferences.itemPlacements || {}).sort(([a],[b]) => a.localeCompare(b));
-  // fjern utvalg som ikke lenger finnes
-  placementSelection.forEach(k => { if (!(k in (preferences.itemPlacements || {}))) placementSelection.delete(k); });
+  const placements = Object.entries(preferences.itemPlacements || {}).filter(([,p]) => p && !p.deleted).sort(([a],[b]) => a.localeCompare(b));
+  // fjern utvalg som ikke lenger finnes / er gravlagt
+  placementSelection.forEach(k => { const e = preferences.itemPlacements[k]; if (!e || e.deleted) placementSelection.delete(k); });
   const q = placementSearch.toLowerCase().trim();
   let list = placements.filter(([key]) => key.includes(q));
   if (placementShowUnused) list = list.filter(([key]) => isPlacementUnused(key));
@@ -1414,6 +1478,18 @@ function renderMaintenance() {
   placementShown = shown.map(([k]) => k);
   const selCount = placementSelection.size;
   const allVisibleSelected = shown.length > 0 && shown.every(([key]) => placementSelection.has(key));
+  // favoritter
+  const favEntries = Object.entries(preferences.favorites || {}).filter(([,e]) => e && !e.deleted).sort(([a],[b]) => a.localeCompare(b));
+  favoriteSelection.forEach(k => { const e = preferences.favorites[k]; if (!e || e.deleted) favoriteSelection.delete(k); });
+  const favQ = favoriteSearch.toLowerCase().trim();
+  const favShownArr = favEntries.filter(([key, e]) => key.includes(favQ) || normalizeItemName(e.text).includes(favQ)).slice(0, 200);
+  favoriteShown = favShownArr.map(([k]) => k);
+  const favSelCount = favoriteSelection.size;
+  const favAllSel = favShownArr.length > 0 && favShownArr.every(([key]) => favoriteSelection.has(key));
+  const favRows = favShownArr.map(([key, e], i) => {
+    const sel = favoriteSelection.has(key);
+    return `<div class="pl-row ${sel ? 'sel' : ''}" onclick="toggleFavoriteSel(${i})"><div class="pl-check">${sel ? '✓' : ''}</div><div class="pl-body"><div class="pl-name">${h(e.text)}</div></div></div>`;
+  }).join('') || '<p class="panel-help">Ingen favoritter.</p>';
   const dataSize = bytesOf(JSON.stringify({ items: listItems, occasions, categories: { kiwi: kiwiSections, andre: andreSections }, preferences }));
   const rows = shown.map(([key, p], i) => {
     const sel = placementSelection.has(key);
@@ -1421,7 +1497,12 @@ function renderMaintenance() {
     return `<div class="pl-row ${sel ? 'sel' : ''}" onclick="togglePlacementSel(${i})"><div class="pl-check">${sel ? '✓' : ''}</div><div class="pl-body"><div class="pl-name">${h(key)}</div><div class="pl-meta">${meta}</div></div></div>`;
   }).join('') || '<p class="panel-help">Ingen treff.</p>';
   el.innerHTML =
-    `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.length}</strong><span>anledninger</span></div><div class="metric"><strong>${placements.length}</strong><span>lærte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div></div><p class="panel-help">Rydd i lærte plasseringer (hvor appen tror varer hører hjemme). Sletting her påvirker ikke varene på lista.</p></div>` +
+    `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.length}</strong><span>anledninger</span></div><div class="metric"><strong>${favEntries.length}</strong><span>favoritter</span></div><div class="metric"><strong>${placements.length}</strong><span>lærte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div></div><p class="panel-help">Rydd i favoritter og lærte plasseringer. Sletting her påvirker ikke varene på lista.</p></div>` +
+    `<div class="maintenance-card"><h2>Favoritter</h2>` +
+    `<input class="text-input" placeholder="Søk..." value="${h(favoriteSearch)}" oninput="favoriteSearch=this.value;renderMaintenance()">` +
+    `<div class="raid-tools">${favShownArr.length ? `<button class="link-btn" onclick="selectAllShownFavorites()">${favAllSel ? 'Fjern alle viste' : 'Velg alle viste'}</button>` : ''}</div>` +
+    `<div style="margin-top:6px">${favRows}</div>` +
+    `<div class="panel-actions"><button class="action-btn danger" ${favSelCount ? '' : 'disabled'} onclick="deleteSelectedFavorites()">Slett valgte (${favSelCount})</button><button class="action-btn secondary" onclick="clearAllFavorites()">Slett alle</button></div></div>` +
     `<div class="maintenance-card"><h2>Lærte plasseringer</h2>` +
     `<input class="text-input" placeholder="Søk..." value="${h(placementSearch)}" oninput="placementSearch=this.value;renderMaintenance()">` +
     `<div class="raid-tools"><label class="raid-toggle" onclick="toggleShowUnused()"><span class="pl-check">${placementShowUnused ? '✓' : ''}</span>Kun ubrukte (${unusedCount})</label>${shown.length ? `<button class="link-btn" onclick="selectAllShown()">${allVisibleSelected ? 'Fjern alle viste' : 'Velg alle viste'}</button>` : ''}</div>` +
@@ -1441,13 +1522,34 @@ function deleteSelectedPlacements() {
   const n = placementSelection.size;
   if (!n) return;
   if (!confirm('Slette ' + n + ' lærte plasseringer?')) return;
-  placementSelection.forEach(k => delete preferences.itemPlacements[k]);
+  placementSelection.forEach(k => tombstoneEntry(preferences.itemPlacements, k));
   placementSelection.clear();
   renderMaintenance(); renderList(); scheduleSave();
 }
-function deletePlacement(key) { delete preferences.itemPlacements[key]; renderMaintenance(); scheduleSave(); }
-function pruneBrokenPlacements() { let count = 0; Object.keys(preferences.itemPlacements || {}).forEach(key => { const p = preferences.itemPlacements[key] || {}; if (!p.store && !p.kiwiSection && !p.andreSection) { delete preferences.itemPlacements[key]; count++; } }); alert('Ryddet ' + count + ' tomme plasseringer.'); renderMaintenance(); scheduleSave(); }
-function clearAllPlacements() { if (!confirm('Slette alle lærte plasseringer?')) return; preferences.itemPlacements = {}; renderMaintenance(); renderList(); scheduleSave(); }
+function deletePlacement(key) { tombstoneEntry(preferences.itemPlacements, key); renderMaintenance(); scheduleSave(); }
+function pruneBrokenPlacements() { let count = 0; Object.keys(preferences.itemPlacements || {}).forEach(key => { const p = preferences.itemPlacements[key] || {}; if (!p.deleted && !p.store && !p.kiwiSection && !p.andreSection) { tombstoneEntry(preferences.itemPlacements, key); count++; } }); alert('Ryddet ' + count + ' tomme plasseringer.'); renderMaintenance(); scheduleSave(); }
+function clearAllPlacements() { if (!confirm('Slette alle lærte plasseringer?')) return; Object.keys(preferences.itemPlacements || {}).forEach(k => tombstoneEntry(preferences.itemPlacements, k)); renderMaintenance(); renderList(); scheduleSave(); }
+function toggleFavoriteSel(i) { const key = favoriteShown[i]; if (key == null) return; if (favoriteSelection.has(key)) favoriteSelection.delete(key); else favoriteSelection.add(key); renderMaintenance(); }
+function selectAllShownFavorites() {
+  const allSel = favoriteShown.length > 0 && favoriteShown.every(k => favoriteSelection.has(k));
+  if (allSel) favoriteShown.forEach(k => favoriteSelection.delete(k));
+  else favoriteShown.forEach(k => favoriteSelection.add(k));
+  renderMaintenance();
+}
+function deleteSelectedFavorites() {
+  const n = favoriteSelection.size;
+  if (!n) return;
+  if (!confirm('Slette ' + n + ' favoritter?')) return;
+  favoriteSelection.forEach(k => tombstoneEntry(preferences.favorites, k));
+  favoriteSelection.clear();
+  renderMaintenance(); renderList(); scheduleSave();
+}
+function clearAllFavorites() {
+  if (!confirm('Slette alle favoritter?')) return;
+  Object.keys(preferences.favorites || {}).forEach(k => tombstoneEntry(preferences.favorites, k));
+  favoriteSelection.clear();
+  renderMaintenance(); renderList(); scheduleSave();
+}
 function doExport() { document.getElementById('exportText').value = JSON.stringify({ items: listItems, occasions, kiwi: kiwiSections, andre: andreSections, preferences }, null, 2); }
 function copyExport() { if (!document.getElementById('exportText').value) doExport(); const ta = document.getElementById('exportText'); ta.select(); document.execCommand('copy'); const btn = document.querySelector('#tab-export .action-btn.secondary'); const old = btn.textContent; btn.textContent = 'Kopiert'; setTimeout(() => btn.textContent = old, 2000); }
 function doImport() { try { const p = JSON.parse(document.getElementById('importText').value.trim()); if (p.items) listItems = p.items; if (p.occasions) occasions = p.occasions; if (p.kiwi) kiwiSections.splice(0, kiwiSections.length, ...p.kiwi); if (p.andre) andreSections.splice(0, andreSections.length, ...p.andre); if (p.preferences) preferences = p.preferences; normalizeState(); document.getElementById('importText').value = ''; closePanel(); renderList(); scheduleSave(); } catch(e) { alert('Feil format.'); } }
