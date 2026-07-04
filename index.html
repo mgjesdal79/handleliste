@@ -259,6 +259,18 @@
   .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: flex-end; justify-content: center; }
   .modal-backdrop.open { display: flex; }
   .modal { background: var(--surface); border-radius: 16px 16px 0 0; padding: 20px 16px 40px; width: 100%; max-width: 640px; max-height: 80vh; overflow-y: auto; overscroll-behavior: contain; }
+  .qm-title { font-size: 0.82rem; color: var(--muted); margin-bottom: 2px; }
+  .qm-item { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.02em; margin-bottom: 14px; }
+  .qm-store-row { display: flex; gap: 6px; margin-bottom: 14px; }
+  .qm-pill { flex: 1; padding: 8px 0; border-radius: 100px; border: 2px solid var(--border); background: transparent; font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.78rem; color: var(--muted); cursor: pointer; text-align: center; }
+  .qm-pill.active[data-s="kiwi"]  { background: var(--kiwi);  border-color: var(--kiwi);  color: #fff; }
+  .qm-pill.active[data-s="rema"]  { background: var(--rema);  border-color: var(--rema);  color: #fff; }
+  .qm-pill.active[data-s="meny"]  { background: var(--meny);  border-color: var(--meny);  color: #fff; }
+  .qm-pill.active[data-s="andre"] { background: var(--andre); border-color: var(--andre); color: #fff; }
+  .qm-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .qm-chip { padding: 9px 14px; border-radius: 100px; border: 1.5px solid var(--border); background: var(--bg); font-family: 'DM Sans', sans-serif; font-size: 0.86rem; font-weight: 700; color: var(--text); cursor: pointer; }
+  .qm-chip.current { border-color: var(--kiwi); background: var(--hi-kiwi); }
+  .qm-empty { color: var(--muted); font-size: 0.85rem; }
   .modal-title { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
   .modal-subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
   .modal-option {
@@ -556,9 +568,21 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="quickMoveModal" onclick="if(event.target===event.currentTarget)closeQuickMove()">
+  <div class="modal">
+    <div class="qm-title">Flytt til</div>
+    <div class="qm-item" id="qmItem"></div>
+    <div class="qm-store-row" id="qmStoreRow"></div>
+    <div class="qm-chips" id="qmChips"></div>
+    <div class="panel-actions">
+      <button class="action-btn secondary" onclick="closeQuickMove()">Avbryt</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // CONFIG
-const APP_VERSION = '2026.07.04 (b15)';
+const APP_VERSION = '2026.07.04 (b16)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -1368,12 +1392,34 @@ function renderItem(item, store, inVogna = false) {
   const priorityClass = item.priority && !inVogna ? 'priority' : '';
   const occ = item.occasionId ? getOccasion(item.occasionId) : null;
   const meta = `${occ ? `<span class="item-pill">${h(occasionLabel(occ))}</span>` : ''}`;
-  const editBtn = !inVogna ? `<button class="edit-zone" aria-label="Rediger ${h(item.text)}" onclick="event.stopPropagation();openItemDrawer('${h(item.id)}')"><svg class="edit-icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><circle cx="10" cy="4" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="10" cy="16" r="1.6"/></svg></button>` : '';
+  const editBtn = !inVogna ? `<button class="edit-zone" data-kebab="${h(item.id)}" aria-label="Rediger ${h(item.text)}"><svg class="edit-icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><circle cx="10" cy="4" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="10" cy="16" r="1.6"/></svg></button>` : '';
   return `<div class="item-row ${highlight} ${vognaClass} ${priorityClass}" data-id="${h(item.id)}" data-store="${h(store)}"><div class="item-main"><div class="check-circle"></div><div class="item-content"><span class="item-name">${h(item.text)}</span>${meta ? `<div class="item-meta">${meta}</div>` : ''}</div>${editBtn}</div></div>`;
 }
 let _lpTimer = null, _lpStart = null, _suppressItemClick = false;
+let _kbTimer = null, _kbSuppress = false;
 function attachEvents() {
   const clearLp = () => { if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; } };
+  const clearKb = () => { if (_kbTimer) { clearTimeout(_kbTimer); _kbTimer = null; } };
+  document.querySelectorAll('.edit-zone[data-kebab]').forEach(btn => {
+    const id = btn.dataset.kebab;
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      if (_kbSuppress) return; // et nettopp utført langtrykk åpnet hurtigflytt, ikke også editoren
+      openItemDrawer(id);
+    });
+    btn.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      clearKb();
+      _kbTimer = setTimeout(() => {
+        _kbTimer = null;
+        _kbSuppress = true;
+        setTimeout(() => { _kbSuppress = false; }, 600);
+        if (navigator.vibrate) navigator.vibrate(10);
+        openQuickMove(id);
+      }, 450);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => btn.addEventListener(ev, clearKb));
+  });
   document.querySelectorAll('.item-main').forEach(main => {
     const row = main.closest('.item-row');
     main.addEventListener('click', e => {
@@ -1475,6 +1521,45 @@ function saveItemDetails() {
   closeSectionModal(); scheduleSave();
 }
 function closeSectionModal() { document.getElementById('sectionModal').classList.remove('open'); activeItemId = null; renderList(); }
+
+// HURTIGFLYTT (langtrykk på ⋯): rask kategori-/butikkflytting uten full editor.
+let quickMoveItemId = null, quickMoveStore = 'kiwi';
+const QM_STORES = [['kiwi', 'Kiwi'], ['rema', 'Rema'], ['meny', 'Mega/Meny'], ['andre', 'Andre']];
+function openQuickMove(itemId) {
+  const item = listItems.find(i => i.id === itemId);
+  if (!item) return;
+  quickMoveItemId = itemId;
+  quickMoveStore = item.store || 'kiwi';
+  document.getElementById('qmItem').textContent = item.text;
+  renderQuickMove();
+  document.getElementById('quickMoveModal').classList.add('open');
+}
+function renderQuickMove() {
+  const item = listItems.find(i => i.id === quickMoveItemId);
+  if (!item) return;
+  document.getElementById('qmStoreRow').innerHTML = QM_STORES.map(([s, label]) =>
+    `<button class="qm-pill ${quickMoveStore === s ? 'active' : ''}" data-s="${s}" onclick="quickMovePickStore('${s}')">${h(label)}</button>`).join('');
+  const isAndre = quickMoveStore === 'andre';
+  const sections = isAndre ? andreSections : kiwiSections; // Kiwi/Rema/Meny deler kiwiSections
+  const curSection = isAndre ? item.andreSection : item.kiwiSection;
+  const sameStore = quickMoveStore === item.store;
+  document.getElementById('qmChips').innerHTML = sections.map(sec => {
+    const cur = sameStore && curSection === sec.id;
+    return `<button class="qm-chip ${cur ? 'current' : ''}" onclick="quickMoveTo('${h(sec.id)}')">${h(sec.label)}${cur ? ' ✓' : ''}</button>`;
+  }).join('') || `<div class="qm-empty">Ingen kategorier her ennå.</div>`;
+}
+function quickMovePickStore(s) { quickMoveStore = s; renderQuickMove(); }
+function quickMoveTo(sectionId) {
+  const item = listItems.find(i => i.id === quickMoveItemId);
+  if (!item) return;
+  item.store = quickMoveStore;
+  if (quickMoveStore === 'andre') { item.andreSection = sectionId; item.kiwiSection = null; }
+  else { item.kiwiSection = sectionId; item.andreSection = null; }
+  rememberPlacement(item);
+  closeQuickMove();
+  renderList(); scheduleSave();
+}
+function closeQuickMove() { document.getElementById('quickMoveModal').classList.remove('open'); quickMoveItemId = null; }
 
 // CATEGORY EDITOR
 function renderCatEditor(type) {
