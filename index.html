@@ -183,6 +183,7 @@
   .item-row.highlighted[data-store="andre"] { background: transparent; border-color: transparent; }
 
   .item-name { flex: 1; font-size: 0.92rem; font-family: 'DM Sans', sans-serif; }
+  .item-row.priority:not(.in-vogna) .item-name { font-weight: 800; }
   .item-row.in-vogna .item-name { text-decoration: line-through; color: var(--muted); }
 
   .check-circle {
@@ -556,7 +557,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.06.30 (b13)';
+const APP_VERSION = '2026.07.04 (b14)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -826,6 +827,7 @@ function normalizeState() {
     if (!item.store) item.store = 'kiwi';
     if (typeof item.checked !== 'boolean') item.checked = !!item.checked;
     if (!('occasionId' in item)) item.occasionId = null;
+    if (typeof item.priority !== 'boolean') item.priority = !!item.priority;
   });
   occasions.forEach((o, i) => {
     if (!o.id) o.id = genId();
@@ -1362,19 +1364,47 @@ function updateOccasionBadge() {
 function renderItem(item, store, inVogna = false) {
   const highlight = item.highlight && !inVogna ? 'highlighted' : '';
   const vognaClass = inVogna ? 'in-vogna' : '';
+  const priorityClass = item.priority && !inVogna ? 'priority' : '';
   const occ = item.occasionId ? getOccasion(item.occasionId) : null;
   const meta = `${occ ? `<span class="item-pill">${h(occasionLabel(occ))}</span>` : ''}`;
   const editBtn = !inVogna ? `<button class="edit-zone" aria-label="Rediger ${h(item.text)}" onclick="event.stopPropagation();openItemDrawer('${h(item.id)}')"><svg class="edit-icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><circle cx="10" cy="4" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="10" cy="16" r="1.6"/></svg></button>` : '';
-  return `<div class="item-row ${highlight} ${vognaClass}" data-id="${h(item.id)}" data-store="${h(store)}"><div class="item-main"><div class="check-circle"></div><div class="item-content"><span class="item-name">${h(item.text)}</span>${meta ? `<div class="item-meta">${meta}</div>` : ''}</div>${editBtn}</div></div>`;
+  return `<div class="item-row ${highlight} ${vognaClass} ${priorityClass}" data-id="${h(item.id)}" data-store="${h(store)}"><div class="item-main"><div class="check-circle"></div><div class="item-content"><span class="item-name">${h(item.text)}</span>${meta ? `<div class="item-meta">${meta}</div>` : ''}</div>${editBtn}</div></div>`;
 }
+let _lpTimer = null, _lpStart = null, _suppressItemClick = false;
 function attachEvents() {
+  const clearLp = () => { if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; } };
   document.querySelectorAll('.item-main').forEach(main => {
+    const row = main.closest('.item-row');
     main.addEventListener('click', e => {
       if (e.target.closest('.edit-zone')) return;
-      const row = main.closest('.item-row');
+      // Et nettopp utført langtrykk skal ikke også krysse av varen.
+      if (_suppressItemClick) return;
       const item = listItems.find(i => i.id === row.dataset.id);
       if (item) { item.checked = !item.checked; renderList(); scheduleSave(); }
     });
+    main.addEventListener('pointerdown', e => {
+      if (e.target.closest('.edit-zone')) return;
+      const item = listItems.find(i => i.id === row.dataset.id);
+      if (!item || item.checked) return; // ingen langtrykk på varer i Vogna
+      _lpStart = { x: e.clientX, y: e.clientY };
+      clearLp();
+      _lpTimer = setTimeout(() => {
+        _lpTimer = null;
+        // Undertrykk det påfølgende klikket kort (selv-nullstillende, så ekte trykk senere virker).
+        _suppressItemClick = true;
+        setTimeout(() => { _suppressItemClick = false; }, 600);
+        item.priority = !item.priority;
+        if (navigator.vibrate) navigator.vibrate(10);
+        renderList(); scheduleSave();
+      }, 500);
+    });
+    main.addEventListener('pointermove', e => {
+      if (_lpTimer && _lpStart) {
+        const dx = e.clientX - _lpStart.x, dy = e.clientY - _lpStart.y;
+        if (dx * dx + dy * dy > 100) clearLp(); // avbryt ved scroll/drag (>10px)
+      }
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => main.addEventListener(ev, clearLp));
   });
 }
 
