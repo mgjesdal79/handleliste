@@ -583,7 +583,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.07.06 (b18)';
+const APP_VERSION = '2026.07.06 (b19)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -695,6 +695,8 @@ function matchFavorites(query) {
 function renderFavoriteToggle(item) {
   const el = document.getElementById('itemFavoriteRow');
   if (!el) return;
+  // Andre butikker holdes utenfor stjerning – skjul toggelen.
+  if (item.store === 'andre') { el.innerHTML = ''; return; }
   const on = isFavorite(item.text);
   el.innerHTML = `<button type="button" class="fav-toggle ${on ? 'on' : ''}" onclick="toggleFavoriteFromEditor()">${on ? '★' : '☆'} Foreslå når jeg skriver</button>`;
 }
@@ -870,6 +872,7 @@ function normalizeState() {
   if ((preferences.schemaVersion || 0) < 2) migrateToSchemaV2();
   if ((preferences.schemaVersion || 0) < 3) migrateToSchemaV3();
   if ((preferences.schemaVersion || 0) < 4) migrateToSchemaV4();
+  if ((preferences.schemaVersion || 0) < 5) migrateToSchemaV5();
   // Invariant: favoritter er ALLTID et riktig kart, uansett hvordan de kom inn (sky, import,
   // migrering). favoritesAsMap er idempotent på riktige kart (bevarer updatedAt) → trygt hver render.
   preferences.favorites = favoritesAsMap(preferences.favorites);
@@ -915,6 +918,18 @@ function migrateToSchemaV4() {
   preferences.favorites = favoritesAsMap(preferences.favorites);
   // itemPlacements er allerede et kart; manglende `deleted` tolkes som levende.
   preferences.schemaVersion = 4;
+}
+
+function migrateToSchemaV5() {
+  // Andre butikker skal holdes utenfor plasserings-minnet. Gravlegg alle eksisterende
+  // itemPlacements med store==='andre' (tombstone, ikke fysisk fjerning → fester seg på begge
+  // enheter, GC-es etter 30 dager). Idempotent.
+  const pl = preferences.itemPlacements || {};
+  Object.keys(pl).forEach(key => {
+    const e = pl[key];
+    if (e && !e.deleted && e.store === 'andre') tombstoneEntry(pl, key);
+  });
+  preferences.schemaVersion = 5;
 }
 
 function gcTombstones(map) {
@@ -1162,10 +1177,17 @@ function addItems() {
   const textarea = document.getElementById('addInput');
   const raw = textarea.value.trim();
   if (!raw) { closePanel(); return; }
-  const storeValue = addGroup === 'andre' ? 'andre' : addStore;
-  const andreSection = addGroup === 'andre' ? addStore : null;
+  const fallbackStore = addGroup === 'andre' ? 'andre' : addStore;
+  const fallbackAndreSection = addGroup === 'andre' ? addStore : null;
   const validAddOccasionId = getOccasion(addOccasionId) ? addOccasionId : null;
   raw.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
+    // Minnet vinner alltid: har varen en lært (dagligvare-)butikk, rutes den dit uansett hvilken
+    // fane man står på. Seksjon fylles av render fra minnet (som før). Andre er utenfor minnet, så
+    // saved.store er alltid en dagligvarebutikk her; !== 'andre' forsvarer mot gammelt minne.
+    const saved = getSavedPlacement(line);
+    const useSaved = !!(saved && saved.store && saved.store !== 'andre');
+    const storeValue = useSaved ? saved.store : fallbackStore;
+    const andreSection = useSaved ? null : fallbackAndreSection;
     listItems.push({ id: genId(), text: line, store: storeValue, kiwiSection: null, andreSection, checked: false, occasionId: validAddOccasionId, createdAt: nowIso() });
   });
   textarea.value = '';
@@ -1288,6 +1310,9 @@ function getSavedPlacement(text) { const e = preferences.itemPlacements[normaliz
 function rememberPlacement(item) {
   const key = normalizeItemName(item.text);
   if (!key) return;
+  // Andre butikker holdes helt utenfor plasserings-minnet. Gravlegg evt. gammel oppføring, ellers
+  // ville en vare flyttet fra dagligvare → Andre bli auto-rutet tilbake til dagligvare ved innlegg.
+  if (item.store === 'andre') { tombstoneEntry(preferences.itemPlacements, key); return; }
   preferences.itemPlacements[key] = { store: item.store, kiwiSection: item.kiwiSection || null, andreSection: item.andreSection || null, updatedAt: nowIso(), deleted: false };
 }
 function isInActiveShoppingScope(item) {
@@ -1358,8 +1383,8 @@ function renderAndre(container, items) {
   const sections = {}, unknown = [], vogna = [];
   for (const item of items) {
     if (item.store !== 'andre') continue;
-    const saved = getSavedPlacement(item.text);
-    let sectionId = item.andreSection || saved?.andreSection || null;
+    // Andre er utenfor plasserings-minnet: bruk kun varens egen andreSection.
+    let sectionId = item.andreSection || null;
     if (sectionId && !andreSections.some(s => s.id === sectionId)) sectionId = null;
     if (item.checked) { vogna.push({ ...item, sectionId }); continue; }
     if (sectionId) { if (!sections[sectionId]) sections[sectionId] = []; sections[sectionId].push({ ...item, sectionId }); }
@@ -1484,7 +1509,8 @@ function renderSectionOptions(item) {
   const isAndre = item.store === 'andre';
   const sections = isAndre ? andreSections : kiwiSections;
   const saved = getSavedPlacement(item.text);
-  const curSection = isAndre ? (item.andreSection || saved?.andreSection || null) : (item.kiwiSection || saved?.kiwiSection || null);
+  // Andre er utenfor plasserings-minnet: kun varens egen andreSection. Dagligvare fyller fra minnet.
+  const curSection = isAndre ? (item.andreSection || null) : (item.kiwiSection || saved?.kiwiSection || null);
   let html = `<div class="field-label">${isAndre ? 'Hvilken butikk under Andre?' : 'Plassering i butikk'}</div>`;
   html += `<button class="section-option" onclick="assignItemSection('')">Ingen / ukjent${!curSection?' ✓':''}</button>`;
   html += sections.map((sec, i) => {
