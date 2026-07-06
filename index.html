@@ -448,7 +448,7 @@
   <div class="slide-panel" id="panel-add">
     <div class="slide-panel-inner">
       <div id="addStoreSelectorInner"></div>
-      <textarea id="addInput" placeholder="Én vare per linje..." oninput="renderAddSuggestions()" onclick="renderAddSuggestions()" onkeyup="renderAddSuggestions()"></textarea>
+      <textarea id="addInput" placeholder="Én vare per linje..." autocapitalize="sentences" oninput="renderAddSuggestions()" onclick="renderAddSuggestions()" onkeyup="renderAddSuggestions()"></textarea>
       <div id="addSuggestions" class="add-suggestions"></div>
       <div id="addMetaSelectorInner"></div>
       <div class="panel-actions">
@@ -583,7 +583,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.07.04 (b17)';
+const APP_VERSION = '2026.07.06 (b18)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
