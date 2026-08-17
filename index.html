@@ -187,6 +187,13 @@
   .item-name { flex: 1; font-size: 0.92rem; font-family: 'DM Sans', sans-serif; }
   .item-row.priority:not(.in-vogna) .item-name { font-weight: 800; }
   .item-row.in-vogna .item-name { text-decoration: line-through; color: var(--muted); }
+  /* Emoji foran navnet. Skjult (ingen flex-gap) med mindre visningen har minst én emoji;
+     da reserverer alle rader lik bredde så teksten aligner. */
+  .item-emoji { display: none; }
+  .has-emoji .item-emoji {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.4em; flex-shrink: 0; font-size: 0.95rem; line-height: 1;
+  }
 
   .check-circle {
     width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border);
@@ -291,6 +298,8 @@
   .section-option { display: block; width: 100%; text-align: left; padding: 11px 14px; margin-bottom: 4px; border-radius: 8px; border: 1px solid var(--border); background: transparent; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; transition: all 0.15s; color: var(--text); }
   .fav-toggle { display: block; width: 100%; text-align: left; padding: 11px 14px; margin-bottom: 8px; border-radius: 8px; border: 1px solid var(--border); background: transparent; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; color: var(--text); }
   .fav-toggle.on { border-color: #e0a500; background: #fff7e6; font-weight: 600; }
+  .fav-emoji-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .fav-emoji-row .field-label { margin: 0; }
   .add-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
   .add-suggestions:empty { display: none; }
   .add-suggest-pill { font-size: 0.85rem; border: 1px solid var(--border); background: #fff; border-radius: 100px; padding: 6px 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text); }
@@ -583,7 +592,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.07.06 (b19)';
+const APP_VERSION = '2026.08.17 (b20)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -683,6 +692,18 @@ function toggleFavorite(text) {
   if (e && !e.deleted) tombstoneEntry(preferences.favorites, k);
   else preferences.favorites[k] = { text: text.trim(), updatedAt: nowIso(), deleted: false };
 }
+function getFavoriteEmoji(text) {
+  const e = preferences.favorites[normalizeItemName(text)];
+  return (e && !e.deleted && typeof e.emoji === 'string') ? e.emoji : '';
+}
+function setFavoriteEmoji(text, emoji) {
+  const k = normalizeItemName(text);
+  if (!k) return;
+  const e = preferences.favorites[k];
+  if (!e || e.deleted) return; // emoji er koblet til stjerne – settes bare på aktiv favoritt
+  e.emoji = String(emoji || '').trim();
+  e.updatedAt = nowIso();
+}
 function matchFavorites(query) {
   const q = normalizeItemName(query);
   if (!q) return [];
@@ -698,7 +719,18 @@ function renderFavoriteToggle(item) {
   // Andre butikker holdes utenfor stjerning – skjul toggelen.
   if (item.store === 'andre') { el.innerHTML = ''; return; }
   const on = isFavorite(item.text);
-  el.innerHTML = `<button type="button" class="fav-toggle ${on ? 'on' : ''}" onclick="toggleFavoriteFromEditor()">${on ? '★' : '☆'} Foreslå når jeg skriver</button>`;
+  const emojiField = on
+    ? `<div class="fav-emoji-row"><span class="field-label">Emoji</span><input class="text-input occasion-emoji-input" id="itemEmojiInput" value="${h(getFavoriteEmoji(item.text))}" placeholder="🙂" aria-label="Emoji for varen" onchange="setEmojiFromEditor(this.value)"></div>`
+    : '';
+  el.innerHTML = `<button type="button" class="fav-toggle ${on ? 'on' : ''}" onclick="toggleFavoriteFromEditor()">${on ? '★' : '☆'} Foreslå når jeg skriver</button>${emojiField}`;
+}
+function setEmojiFromEditor(value) {
+  const item = listItems.find(i => i.id === activeItemId);
+  if (!item) return;
+  const name = (document.getElementById('itemNameInput').value || item.text).trim();
+  setFavoriteEmoji(name, value);
+  scheduleSave();
+  renderList();
 }
 function toggleFavoriteFromEditor() {
   const item = listItems.find(i => i.id === activeItemId);
@@ -810,7 +842,7 @@ function favoritesAsMap(fav) {
   } else if (fav && typeof fav === 'object') {
     Object.entries(fav).forEach(([key, e]) => {
       if (typeof e === 'string') { const k = normalizeItemName(e); if (k) out[k] = { text: e.trim(), updatedAt: nowIso(), deleted: false }; }
-      else if (e && typeof e === 'object' && typeof e.text === 'string') { out[key] = { text: e.text, updatedAt: e.updatedAt || nowIso(), deleted: !!e.deleted }; }
+      else if (e && typeof e === 'object' && typeof e.text === 'string') { out[key] = { text: e.text, emoji: typeof e.emoji === 'string' ? e.emoji : '', updatedAt: e.updatedAt || nowIso(), deleted: !!e.deleted }; }
     });
   }
   return out;
@@ -1160,7 +1192,7 @@ function renderAddPanel() {
     </div>`;
   if (meta) {
     const metaParts = [];
-    if (activeOccasions().length) metaParts.push(`<label><span class="field-label">Anledning</span><select class="select-input" onchange="addOccasionId=this.value||null">${renderOccasionOptions(addOccasionId, 'Ingen anledning')}</select></label>`);
+    if (selectedOccasions().length) metaParts.push(`<label><span class="field-label">Anledning</span><select class="select-input" onchange="addOccasionId=this.value||null">${renderOccasionOptions(addOccasionId, 'Ingen anledning')}</select></label>`);
     else addOccasionId = null;
     meta.innerHTML = metaParts.length ? `<div class="meta-grid ${metaParts.length === 1 ? 'single' : ''}">${metaParts.join('')}</div>` : '';
   }
@@ -1332,6 +1364,8 @@ function renderList() {
   bottomBar.style.display = scoped.some(i => i.checked) ? 'flex' : 'none';
   const occBtn = document.getElementById('occasionBtn');
   if (occBtn) occBtn.style.display = 'inline-flex';
+  // Reserver emoji-slot (for justert tekst) kun når minst én synlig vare har emoji.
+  container.classList.toggle('has-emoji', scoped.some(i => getFavoriteEmoji(i.text)));
   if (currentStore === 'andre') renderAndre(container, scoped);
   else renderGrocery(container, scoped);
   updateOccasionBadge();
@@ -1417,9 +1451,10 @@ function renderItem(item, store, inVogna = false) {
   const vognaClass = inVogna ? 'in-vogna' : '';
   const priorityClass = item.priority && !inVogna ? 'priority' : '';
   const occ = item.occasionId ? getOccasion(item.occasionId) : null;
+  const favEmoji = getFavoriteEmoji(item.text);
   const meta = `${occ ? `<span class="item-pill">${h(occasionLabel(occ))}</span>` : ''}`;
   const editBtn = !inVogna ? `<button class="edit-zone" data-kebab="${h(item.id)}" aria-label="Rediger ${h(item.text)}"><svg class="edit-icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><circle cx="10" cy="4" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="10" cy="16" r="1.6"/></svg></button>` : '';
-  return `<div class="item-row ${highlight} ${vognaClass} ${priorityClass}" data-id="${h(item.id)}" data-store="${h(store)}"><div class="item-main"><div class="check-circle"></div><div class="item-content"><span class="item-name">${h(item.text)}</span>${meta ? `<div class="item-meta">${meta}</div>` : ''}</div>${editBtn}</div></div>`;
+  return `<div class="item-row ${highlight} ${vognaClass} ${priorityClass}" data-id="${h(item.id)}" data-store="${h(store)}"><div class="item-main"><div class="check-circle"></div><span class="item-emoji">${h(favEmoji)}</span><div class="item-content"><span class="item-name">${h(item.text)}</span>${meta ? `<div class="item-meta">${meta}</div>` : ''}</div>${editBtn}</div></div>`;
 }
 let _lpTimer = null, _lpStart = null, _suppressItemClick = false;
 let _kbTimer = null, _kbSuppress = false;
@@ -1490,7 +1525,7 @@ function openItemDrawer(itemId) {
   document.getElementById('sectionModalTitle').textContent = 'Rediger vare';
   document.getElementById('itemNameInput').value = item.text;
   const metaParts = [];
-  if (activeOccasions().length || item.occasionId) metaParts.push(`<label><span class="field-label">Anledning</span><select class="select-input" id="itemOccasionSelect">${renderOccasionOptions(item.occasionId || '', 'Ingen anledning')}</select></label>`);
+  if (selectedOccasions().length || item.occasionId) metaParts.push(`<label><span class="field-label">Anledning</span><select class="select-input" id="itemOccasionSelect">${renderOccasionOptions(item.occasionId || '', 'Ingen anledning')}</select></label>`);
   document.getElementById('itemMetaSection').innerHTML = metaParts.length ? `<div class="meta-grid ${metaParts.length === 1 ? 'single' : ''}">${metaParts.join('')}</div>` : '';
   renderFavoriteToggle(item);
   renderStorePicker(item);
