@@ -1070,20 +1070,23 @@ async function enterRoom(code, row = null) {
 }
 function loadFromRow(row) {
   const d = parseMaybeJson(row?.data, {});
+  let remoteItems;
   if (d.items && d.items.length && d.items[0].id) {
-    listItems = d.items;
+    remoteItems = d.items;
   } else if (d.items) {
     const storeData = d.storeData || {};
     const checkedItems = d.checkedItems || {};
-    listItems = d.items.map(item => {
+    remoteItems = d.items.map(item => {
       const key = String(item.text || '').toLowerCase().trim();
       const sd = storeData[key] || {};
       let store = sd.store || (sd.stores && sd.stores[0]) || 'kiwi';
       if (sd.stores && sd.stores.includes('andre')) store = 'andre';
-      return { id: genId(), text: item.text, store, kiwiSection: sd.kiwiSection || null, andreSection: sd.andreSection || null, checked: checkedItems[key] || false, occasionId: null };
+      return { id: genId(), text: item.text, store, kiwiSection: sd.kiwiSection || null, andreSection: sd.andreSection || null, checked: checkedItems[key] || false, occasionId: null, updatedAt: nowIso(), deleted: false };
     });
-  } else listItems = [];
-  occasions = Array.isArray(d.occasions) ? d.occasions : [];
+  } else remoteItems = [];
+  const remoteOccasions = Array.isArray(d.occasions) ? d.occasions : [];
+  listItems = mergeLwwArray(listItems, remoteItems);
+  occasions = mergeLwwArray(occasions, remoteOccasions);
   const cats = parseMaybeJson(row?.categories, null);
   if (cats) {
     if (Array.isArray(cats.kiwi)) kiwiSections.splice(0, kiwiSections.length, ...cats.kiwi);
@@ -1095,7 +1098,9 @@ function loadFromRow(row) {
   const mergedPl = mergeLwwMap(localPrefs.itemPlacements, remotePrefs.itemPlacements);
   const mergeAddedLocal =
     mapSig(mergedFav) !== mapSig(remotePrefs.favorites) ||
-    mapSig(mergedPl) !== mapSig(remotePrefs.itemPlacements);
+    mapSig(mergedPl) !== mapSig(remotePrefs.itemPlacements) ||
+    arrSig(listItems) !== arrSig(remoteItems) ||
+    arrSig(occasions) !== arrSig(remoteOccasions);
   preferences = { ...remotePrefs, favorites: mergedFav, itemPlacements: mergedPl };
   const schemaBefore = (preferences && preferences.schemaVersion) || 0;
   normalizeState();
