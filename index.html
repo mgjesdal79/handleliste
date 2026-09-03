@@ -1049,7 +1049,6 @@ async function joinRoom() {
       if (!shownFromCache) { alert('Fant ikke liste'); setSyncStatus('error'); }
       return;
     }
-    if (shownFromCache && localDirtySinceLoad) { await saveToCloud(); return; }
     await enterRoom(token, result.data);
   } catch (e) {
     if (!shownFromCache) alert('Tilkoblingsfeil. Prøv igjen.');
@@ -1182,6 +1181,11 @@ async function pollCloud() {
   } catch (e) { setSyncStatus('error'); }
 }
 function startPolling() { clearInterval(pollInterval); pollInterval = setInterval(pollCloud, 5000); }
+document.addEventListener('visibilitychange', () => {
+  if (!currentRoomCode) return;
+  if (document.hidden) { clearInterval(pollInterval); }
+  else { pollCloud(); startPolling(); }
+});
 
 // PANELS AND TABS
 function closePanel() {
