@@ -832,6 +832,29 @@ function mergeLwwMap(local, remote) {
   }
   return out;
 }
+function mergeLwwArray(local, remote) {
+  const byId = new Map();
+  const take = arr => (arr || []).forEach(e => {
+    if (!e || !e.id) return;
+    const cur = byId.get(e.id);
+    if (!cur) { byId.set(e.id, e); return; }
+    const ta = Date.parse(cur.updatedAt) || 0, tb = Date.parse(e.updatedAt) || 0;
+    if (tb > ta) byId.set(e.id, e);
+    else if (tb === ta && (e.deleted || cur.deleted)) byId.set(e.id, { ...cur, deleted: true });
+  });
+  take(local); take(remote); // remote kan overstyre paa nyere updatedAt
+  return Array.from(byId.values());
+}
+function arrSig(arr) {
+  return (arr || []).map(e => (e && e.id ? e.id + ':' + (e.updatedAt || '') + ':' + (e.deleted ? 1 : 0) : ''))
+    .filter(Boolean).sort().join('|');
+}
+function touchItem(item) { if (item) item.updatedAt = nowIso(); }
+function gcArrayTombstones(arr) {
+  if (!Array.isArray(arr)) return arr;
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  return arr.filter(e => !(e && e.deleted && (Date.parse(e.updatedAt) || 0) < cutoff));
+}
 function favoritesAsMap(fav) {
   // Tvinger favoritter til kart { normNavn: {text, updatedAt, deleted} }. Tåler alle former:
   // gammelt string-array, korrupt indeks-nøklet objekt med strengverdier, eller riktig kart.
@@ -888,12 +911,16 @@ function normalizeState() {
     if (typeof item.checked !== 'boolean') item.checked = !!item.checked;
     if (!('occasionId' in item)) item.occasionId = null;
     if (typeof item.priority !== 'boolean') item.priority = !!item.priority;
+    if (!item.updatedAt) item.updatedAt = item.createdAt || nowIso();
+    if (typeof item.deleted !== 'boolean') item.deleted = false;
   });
   occasions.forEach((o, i) => {
     if (!o.id) o.id = genId();
     if (!o.name) o.name = 'Anledning ' + (i + 1);
     if (!('emoji' in o)) o.emoji = guessOccasionEmoji(o.name);
     if (!('sortOrder' in o)) o.sortOrder = i;
+    if (!o.updatedAt) o.updatedAt = o.createdAt || nowIso();
+    if (typeof o.deleted !== 'boolean') o.deleted = false;
   });
   if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
   if (!preferences.itemPlacements || typeof preferences.itemPlacements !== 'object') preferences.itemPlacements = {};
@@ -905,11 +932,14 @@ function normalizeState() {
   if ((preferences.schemaVersion || 0) < 3) migrateToSchemaV3();
   if ((preferences.schemaVersion || 0) < 4) migrateToSchemaV4();
   if ((preferences.schemaVersion || 0) < 5) migrateToSchemaV5();
+  if ((preferences.schemaVersion || 0) < 6) migrateToSchemaV6();
   // Invariant: favoritter er ALLTID et riktig kart, uansett hvordan de kom inn (sky, import,
   // migrering). favoritesAsMap er idempotent på riktige kart (bevarer updatedAt) → trygt hver render.
   preferences.favorites = favoritesAsMap(preferences.favorites);
   gcTombstones(preferences.favorites);
   gcTombstones(preferences.itemPlacements);
+  listItems = gcArrayTombstones(listItems);
+  occasions = gcArrayTombstones(occasions);
 }
 
 function migrateToSchemaV1() {
@@ -962,6 +992,13 @@ function migrateToSchemaV5() {
     if (e && !e.deleted && e.store === 'andre') tombstoneEntry(pl, key);
   });
   preferences.schemaVersion = 5;
+}
+
+function migrateToSchemaV6() {
+  // Gi alle varer/anledninger updatedAt + deleted saa de kan CRDT-flettes.
+  listItems.forEach(i => { if (!i.updatedAt) i.updatedAt = i.createdAt || nowIso(); if (typeof i.deleted !== 'boolean') i.deleted = false; });
+  occasions.forEach(o => { if (!o.updatedAt) o.updatedAt = o.createdAt || nowIso(); if (typeof o.deleted !== 'boolean') o.deleted = false; });
+  preferences.schemaVersion = 6;
 }
 
 function gcTombstones(map) {
