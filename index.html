@@ -592,7 +592,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.09.03 (b21)';
+const APP_VERSION = '2026.09.04 (b22)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -671,6 +671,10 @@ function genId() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 }
 function nowIso() { return new Date().toISOString(); }
+// Fast baseline for eldre varer/anledninger som mangler ekte updatedAt. MÅ være en fast konstant
+// (ikke nowIso()): ellers får samme gamle vare et ferskt tidsstempel på hver enhet ved hver last,
+// og en stale-men-levende cachekopi slår et ekte gravstein → gamle varer gjenoppstår (CRDT-LWW).
+const LEGACY_EPOCH = '1970-01-01T00:00:00.000Z';
 function h(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }
@@ -911,7 +915,7 @@ function normalizeState() {
     if (typeof item.checked !== 'boolean') item.checked = !!item.checked;
     if (!('occasionId' in item)) item.occasionId = null;
     if (typeof item.priority !== 'boolean') item.priority = !!item.priority;
-    if (!item.updatedAt) item.updatedAt = item.createdAt || nowIso();
+    if (!item.updatedAt) item.updatedAt = item.createdAt || LEGACY_EPOCH;
     if (typeof item.deleted !== 'boolean') item.deleted = false;
   });
   occasions.forEach((o, i) => {
@@ -919,7 +923,7 @@ function normalizeState() {
     if (!o.name) o.name = 'Anledning ' + (i + 1);
     if (!('emoji' in o)) o.emoji = guessOccasionEmoji(o.name);
     if (!('sortOrder' in o)) o.sortOrder = i;
-    if (!o.updatedAt) o.updatedAt = o.createdAt || nowIso();
+    if (!o.updatedAt) o.updatedAt = o.createdAt || LEGACY_EPOCH;
     if (typeof o.deleted !== 'boolean') o.deleted = false;
   });
   if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
@@ -995,9 +999,11 @@ function migrateToSchemaV5() {
 }
 
 function migrateToSchemaV6() {
-  // Gi alle varer/anledninger updatedAt + deleted saa de kan CRDT-flettes.
-  listItems.forEach(i => { if (!i.updatedAt) i.updatedAt = i.createdAt || nowIso(); if (typeof i.deleted !== 'boolean') i.deleted = false; });
-  occasions.forEach(o => { if (!o.updatedAt) o.updatedAt = o.createdAt || nowIso(); if (typeof o.deleted !== 'boolean') o.deleted = false; });
+  // Gi alle varer/anledninger updatedAt + deleted saa de kan CRDT-flettes. Fast LEGACY_EPOCH (ikke
+  // nowIso): migreringen kjører uavhengig på hver enhet, så nowIso ville gitt samme gamle vare ulik
+  // "sist endret" per enhet → stale-kopi slår gravstein → gjenoppstår. Fast epoke → deterministisk.
+  listItems.forEach(i => { if (!i.updatedAt) i.updatedAt = i.createdAt || LEGACY_EPOCH; if (typeof i.deleted !== 'boolean') i.deleted = false; });
+  occasions.forEach(o => { if (!o.updatedAt) o.updatedAt = o.createdAt || LEGACY_EPOCH; if (typeof o.deleted !== 'boolean') o.deleted = false; });
   preferences.schemaVersion = 6;
 }
 
