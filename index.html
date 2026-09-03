@@ -745,8 +745,8 @@ function markPerf(label, extra = '') {
   perfLog.unshift({ at: new Date().toLocaleTimeString('no-NO'), label, extra });
   perfLog = perfLog.slice(0, 40);
 }
-function getOccasion(id) { return occasions.find(o => o.id === id) || null; }
-function activeOccasions() { return occasions.slice().sort((a,b)=>(a.sortOrder || 0) - (b.sortOrder || 0)); }
+function getOccasion(id) { return occasions.find(o => o.id === id && !o.deleted) || null; }
+function activeOccasions() { return occasions.filter(o => !o.deleted).sort((a,b)=>(a.sortOrder || 0) - (b.sortOrder || 0)); }
 function guessOccasionEmoji(name) {
   const n = normalizeItemName(name);
   if (!n) return '';
@@ -1347,7 +1347,7 @@ function addOccasionFromNext() {
   const name = nameInput ? nameInput.value.trim() : '';
   if (!name) return;
   const emoji = normalizeEmojiInput(emojiInput ? emojiInput.value : '') || guessOccasionEmoji(name);
-  occasions.push({ id: genId(), name, emoji, sortOrder: occasions.length, createdAt: nowIso() });
+  occasions.push({ id: genId(), name, emoji, sortOrder: occasions.length, createdAt: nowIso(), updatedAt: nowIso(), deleted: false });
   if (nameInput) nameInput.value = '';
   if (emojiInput) emojiInput.value = '';
   if (openPanel === 'occasions') renderOccasionPanel();
@@ -1359,6 +1359,7 @@ function updateOccasionName(id, value) {
   if (!o) return;
   o.name = value.trim() || o.name;
   if (!o.emoji) o.emoji = guessOccasionEmoji(o.name);
+  o.updatedAt = nowIso();
   renderOccasionPanel();
   renderList();
   scheduleSave();
@@ -1367,6 +1368,7 @@ function updateOccasionEmoji(id, value) {
   const o = getOccasion(id);
   if (!o) return;
   o.emoji = normalizeEmojiInput(value);
+  o.updatedAt = nowIso();
   renderOccasionPanel();
   renderList();
   scheduleSave();
@@ -1374,8 +1376,8 @@ function updateOccasionEmoji(id, value) {
 function deleteOccasion(id) {
   const o = getOccasion(id);
   if (!o || !confirm('Slette anledningen? Varer kobles fra.')) return;
-  occasions = occasions.filter(x => x.id !== id);
-  listItems.forEach(item => { if (!item.deleted && item.occasionId === id) item.occasionId = null; });
+  o.deleted = true; o.updatedAt = nowIso();
+  listItems.forEach(item => { if (!item.deleted && item.occasionId === id) { item.occasionId = null; touchItem(item); } });
   activeOccasionFilters.delete(id);
   if (openPanel === 'occasions') renderOccasionPanel();
   renderList(); scheduleSave();
@@ -1734,7 +1736,7 @@ function renderMaintenance() {
     return `<div class="pl-row ${sel ? 'sel' : ''}" onclick="togglePlacementSel(${i})"><div class="pl-check">${sel ? '✓' : ''}</div><div class="pl-body"><div class="pl-name">${h(key)}</div><div class="pl-meta">${meta}</div></div></div>`;
   }).join('') || '<p class="panel-help">Ingen treff.</p>';
   el.innerHTML =
-    `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.filter(i => !i.deleted).length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.length}</strong><span>anledninger</span></div><div class="metric"><strong>${favEntries.length}</strong><span>favoritter</span></div><div class="metric"><strong>${placements.length}</strong><span>lærte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div></div><p class="panel-help">Rydd i favoritter og lærte plasseringer. Sletting her påvirker ikke varene på lista.</p></div>` +
+    `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.filter(i => !i.deleted).length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.filter(o => !o.deleted).length}</strong><span>anledninger</span></div><div class="metric"><strong>${favEntries.length}</strong><span>favoritter</span></div><div class="metric"><strong>${placements.length}</strong><span>lærte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div></div><p class="panel-help">Rydd i favoritter og lærte plasseringer. Sletting her påvirker ikke varene på lista.</p></div>` +
     `<div class="maintenance-card"><h2>Favoritter</h2>` +
     `<input class="text-input" placeholder="Søk..." value="${h(favoriteSearch)}" oninput="favoriteSearch=this.value;renderMaintenance()">` +
     `<div class="raid-tools">${favShownArr.length ? `<button class="link-btn" onclick="selectAllShownFavorites()">${favAllSel ? 'Fjern alle viste' : 'Velg alle viste'}</button>` : ''}</div>` +
