@@ -592,7 +592,7 @@
 
 <script>
 // CONFIG
-const APP_VERSION = '2026.08.17 (b20)';
+const APP_VERSION = '2026.09.03 (b21)';
 const EDGE_FUNCTION_URL = 'https://vkhktataxypuobrzslbi.supabase.co/functions/v1/shopping-room';
 const BEREDSKAP_OCCASION_ID = 'e6a83052-f7d0-453f-8f59-a5ae92ae03bc';
 
@@ -745,8 +745,8 @@ function markPerf(label, extra = '') {
   perfLog.unshift({ at: new Date().toLocaleTimeString('no-NO'), label, extra });
   perfLog = perfLog.slice(0, 40);
 }
-function getOccasion(id) { return occasions.find(o => o.id === id) || null; }
-function activeOccasions() { return occasions.slice().sort((a,b)=>(a.sortOrder || 0) - (b.sortOrder || 0)); }
+function getOccasion(id) { return occasions.find(o => o.id === id && !o.deleted) || null; }
+function activeOccasions() { return occasions.filter(o => !o.deleted).sort((a,b)=>(a.sortOrder || 0) - (b.sortOrder || 0)); }
 function guessOccasionEmoji(name) {
   const n = normalizeItemName(name);
   if (!n) return '';
@@ -832,6 +832,29 @@ function mergeLwwMap(local, remote) {
   }
   return out;
 }
+function mergeLwwArray(local, remote) {
+  const byId = new Map();
+  const take = arr => (arr || []).forEach(e => {
+    if (!e || !e.id) return;
+    const cur = byId.get(e.id);
+    if (!cur) { byId.set(e.id, e); return; }
+    const ta = Date.parse(cur.updatedAt) || 0, tb = Date.parse(e.updatedAt) || 0;
+    if (tb > ta) byId.set(e.id, e);
+    else if (tb === ta && (e.deleted || cur.deleted)) byId.set(e.id, { ...cur, deleted: true });
+  });
+  take(local); take(remote); // remote kan overstyre paa nyere updatedAt
+  return Array.from(byId.values());
+}
+function arrSig(arr) {
+  return (arr || []).map(e => (e && e.id ? e.id + ':' + (e.updatedAt || '') + ':' + (e.deleted ? 1 : 0) : ''))
+    .filter(Boolean).sort().join('|');
+}
+function touchItem(item) { if (item) item.updatedAt = nowIso(); }
+function gcArrayTombstones(arr) {
+  if (!Array.isArray(arr)) return arr;
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  return arr.filter(e => !(e && e.deleted && (Date.parse(e.updatedAt) || 0) < cutoff));
+}
 function favoritesAsMap(fav) {
   // Tvinger favoritter til kart { normNavn: {text, updatedAt, deleted} }. Tåler alle former:
   // gammelt string-array, korrupt indeks-nøklet objekt med strengverdier, eller riktig kart.
@@ -888,12 +911,16 @@ function normalizeState() {
     if (typeof item.checked !== 'boolean') item.checked = !!item.checked;
     if (!('occasionId' in item)) item.occasionId = null;
     if (typeof item.priority !== 'boolean') item.priority = !!item.priority;
+    if (!item.updatedAt) item.updatedAt = item.createdAt || nowIso();
+    if (typeof item.deleted !== 'boolean') item.deleted = false;
   });
   occasions.forEach((o, i) => {
     if (!o.id) o.id = genId();
     if (!o.name) o.name = 'Anledning ' + (i + 1);
     if (!('emoji' in o)) o.emoji = guessOccasionEmoji(o.name);
     if (!('sortOrder' in o)) o.sortOrder = i;
+    if (!o.updatedAt) o.updatedAt = o.createdAt || nowIso();
+    if (typeof o.deleted !== 'boolean') o.deleted = false;
   });
   if (!preferences || typeof preferences !== 'object') preferences = { itemPlacements: {} };
   if (!preferences.itemPlacements || typeof preferences.itemPlacements !== 'object') preferences.itemPlacements = {};
@@ -905,11 +932,14 @@ function normalizeState() {
   if ((preferences.schemaVersion || 0) < 3) migrateToSchemaV3();
   if ((preferences.schemaVersion || 0) < 4) migrateToSchemaV4();
   if ((preferences.schemaVersion || 0) < 5) migrateToSchemaV5();
+  if ((preferences.schemaVersion || 0) < 6) migrateToSchemaV6();
   // Invariant: favoritter er ALLTID et riktig kart, uansett hvordan de kom inn (sky, import,
   // migrering). favoritesAsMap er idempotent på riktige kart (bevarer updatedAt) → trygt hver render.
   preferences.favorites = favoritesAsMap(preferences.favorites);
   gcTombstones(preferences.favorites);
   gcTombstones(preferences.itemPlacements);
+  listItems = gcArrayTombstones(listItems);
+  occasions = gcArrayTombstones(occasions);
 }
 
 function migrateToSchemaV1() {
@@ -964,6 +994,13 @@ function migrateToSchemaV5() {
   preferences.schemaVersion = 5;
 }
 
+function migrateToSchemaV6() {
+  // Gi alle varer/anledninger updatedAt + deleted saa de kan CRDT-flettes.
+  listItems.forEach(i => { if (!i.updatedAt) i.updatedAt = i.createdAt || nowIso(); if (typeof i.deleted !== 'boolean') i.deleted = false; });
+  occasions.forEach(o => { if (!o.updatedAt) o.updatedAt = o.createdAt || nowIso(); if (typeof o.deleted !== 'boolean') o.deleted = false; });
+  preferences.schemaVersion = 6;
+}
+
 function gcTombstones(map) {
   if (!map || typeof map !== 'object') return;
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -1012,7 +1049,6 @@ async function joinRoom() {
       if (!shownFromCache) { alert('Fant ikke liste'); setSyncStatus('error'); }
       return;
     }
-    if (shownFromCache && localDirtySinceLoad) { await saveToCloud(); return; }
     await enterRoom(token, result.data);
   } catch (e) {
     if (!shownFromCache) alert('Tilkoblingsfeil. Prøv igjen.');
@@ -1033,20 +1069,23 @@ async function enterRoom(code, row = null) {
 }
 function loadFromRow(row) {
   const d = parseMaybeJson(row?.data, {});
+  let remoteItems;
   if (d.items && d.items.length && d.items[0].id) {
-    listItems = d.items;
+    remoteItems = d.items;
   } else if (d.items) {
     const storeData = d.storeData || {};
     const checkedItems = d.checkedItems || {};
-    listItems = d.items.map(item => {
+    remoteItems = d.items.map(item => {
       const key = String(item.text || '').toLowerCase().trim();
       const sd = storeData[key] || {};
       let store = sd.store || (sd.stores && sd.stores[0]) || 'kiwi';
       if (sd.stores && sd.stores.includes('andre')) store = 'andre';
-      return { id: genId(), text: item.text, store, kiwiSection: sd.kiwiSection || null, andreSection: sd.andreSection || null, checked: checkedItems[key] || false, occasionId: null };
+      return { id: genId(), text: item.text, store, kiwiSection: sd.kiwiSection || null, andreSection: sd.andreSection || null, checked: checkedItems[key] || false, occasionId: null, updatedAt: nowIso(), deleted: false };
     });
-  } else listItems = [];
-  occasions = Array.isArray(d.occasions) ? d.occasions : [];
+  } else remoteItems = [];
+  const remoteOccasions = Array.isArray(d.occasions) ? d.occasions : [];
+  listItems = mergeLwwArray(listItems, remoteItems);
+  occasions = mergeLwwArray(occasions, remoteOccasions);
   const cats = parseMaybeJson(row?.categories, null);
   if (cats) {
     if (Array.isArray(cats.kiwi)) kiwiSections.splice(0, kiwiSections.length, ...cats.kiwi);
@@ -1058,7 +1097,9 @@ function loadFromRow(row) {
   const mergedPl = mergeLwwMap(localPrefs.itemPlacements, remotePrefs.itemPlacements);
   const mergeAddedLocal =
     mapSig(mergedFav) !== mapSig(remotePrefs.favorites) ||
-    mapSig(mergedPl) !== mapSig(remotePrefs.itemPlacements);
+    mapSig(mergedPl) !== mapSig(remotePrefs.itemPlacements) ||
+    arrSig(listItems) !== arrSig(remoteItems) ||
+    arrSig(occasions) !== arrSig(remoteOccasions);
   preferences = { ...remotePrefs, favorites: mergedFav, itemPlacements: mergedPl };
   const schemaBefore = (preferences && preferences.schemaVersion) || 0;
   normalizeState();
@@ -1140,6 +1181,11 @@ async function pollCloud() {
   } catch (e) { setSyncStatus('error'); }
 }
 function startPolling() { clearInterval(pollInterval); pollInterval = setInterval(pollCloud, 5000); }
+document.addEventListener('visibilitychange', () => {
+  if (!currentRoomCode) return;
+  if (document.hidden) { clearInterval(pollInterval); }
+  else { pollCloud(); startPolling(); }
+});
 
 // PANELS AND TABS
 function closePanel() {
@@ -1213,14 +1259,13 @@ function addItems() {
   const fallbackAndreSection = addGroup === 'andre' ? addStore : null;
   const validAddOccasionId = getOccasion(addOccasionId) ? addOccasionId : null;
   raw.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
-    // Minnet vinner alltid: har varen en lært (dagligvare-)butikk, rutes den dit uansett hvilken
-    // fane man står på. Seksjon fylles av render fra minnet (som før). Andre er utenfor minnet, så
-    // saved.store er alltid en dagligvarebutikk her; !== 'andre' forsvarer mot gammelt minne.
     const saved = getSavedPlacement(line);
-    const useSaved = !!(saved && saved.store && saved.store !== 'andre');
+    // Eksplisitt fane vinner: står du på Andre, legges varen i Andre uansett lært minne.
+    // Ellers brukes lært dagligvarebutikk som ruting; fane er fallback for ukjente varer.
+    const useSaved = addGroup !== 'andre' && !!(saved && saved.store && saved.store !== 'andre');
     const storeValue = useSaved ? saved.store : fallbackStore;
     const andreSection = useSaved ? null : fallbackAndreSection;
-    listItems.push({ id: genId(), text: line, store: storeValue, kiwiSection: null, andreSection, checked: false, occasionId: validAddOccasionId, createdAt: nowIso() });
+    listItems.push({ id: genId(), text: line, store: storeValue, kiwiSection: null, andreSection, checked: false, occasionId: validAddOccasionId, createdAt: nowIso(), updatedAt: nowIso(), deleted: false });
   });
   textarea.value = '';
   currentAddSuggestions = [];
@@ -1302,7 +1347,7 @@ function addOccasionFromNext() {
   const name = nameInput ? nameInput.value.trim() : '';
   if (!name) return;
   const emoji = normalizeEmojiInput(emojiInput ? emojiInput.value : '') || guessOccasionEmoji(name);
-  occasions.push({ id: genId(), name, emoji, sortOrder: occasions.length, createdAt: nowIso() });
+  occasions.push({ id: genId(), name, emoji, sortOrder: occasions.length, createdAt: nowIso(), updatedAt: nowIso(), deleted: false });
   if (nameInput) nameInput.value = '';
   if (emojiInput) emojiInput.value = '';
   if (openPanel === 'occasions') renderOccasionPanel();
@@ -1314,6 +1359,7 @@ function updateOccasionName(id, value) {
   if (!o) return;
   o.name = value.trim() || o.name;
   if (!o.emoji) o.emoji = guessOccasionEmoji(o.name);
+  o.updatedAt = nowIso();
   renderOccasionPanel();
   renderList();
   scheduleSave();
@@ -1322,6 +1368,7 @@ function updateOccasionEmoji(id, value) {
   const o = getOccasion(id);
   if (!o) return;
   o.emoji = normalizeEmojiInput(value);
+  o.updatedAt = nowIso();
   renderOccasionPanel();
   renderList();
   scheduleSave();
@@ -1329,8 +1376,8 @@ function updateOccasionEmoji(id, value) {
 function deleteOccasion(id) {
   const o = getOccasion(id);
   if (!o || !confirm('Slette anledningen? Varer kobles fra.')) return;
-  occasions = occasions.filter(x => x.id !== id);
-  listItems.forEach(item => { if (item.occasionId === id) item.occasionId = null; });
+  o.deleted = true; o.updatedAt = nowIso();
+  listItems.forEach(item => { if (!item.deleted && item.occasionId === id) { item.occasionId = null; touchItem(item); } });
   activeOccasionFilters.delete(id);
   if (openPanel === 'occasions') renderOccasionPanel();
   renderList(); scheduleSave();
@@ -1352,7 +1399,7 @@ function isInActiveShoppingScope(item) {
   return !item.occasionId;
 }
 function getScopedItems() {
-  return listItems.filter(isInActiveShoppingScope);
+  return listItems.filter(i => !i.deleted && isInActiveShoppingScope(i));
 }
 function renderList() {
   const start = performance.now();
@@ -1371,9 +1418,9 @@ function renderList() {
   updateOccasionBadge();
   markPerf('Render', Math.round(performance.now() - start) + ' ms');
 }
-function hasOccasionItems(occasionId) { return listItems.some(i => i.occasionId === occasionId); }
+function hasOccasionItems(occasionId) { return listItems.some(i => !i.deleted && i.occasionId === occasionId); }
 function primaryEmptyText() {
-  return listItems.some(i => i.occasionId)
+  return listItems.some(i => !i.deleted && i.occasionId)
     ? 'Ingen vanlige varer i denne butikkvisningen. Trykk på en anledning over for å vise anledningsvarer.'
     : 'Trykk <strong>+</strong> for å legge til varer.';
 }
@@ -1488,7 +1535,7 @@ function attachEvents() {
       // Et nettopp utført langtrykk skal ikke også krysse av varen.
       if (_suppressItemClick) return;
       const item = listItems.find(i => i.id === row.dataset.id);
-      if (item) { item.checked = !item.checked; renderList(); scheduleSave(); }
+      if (item) { item.checked = !item.checked; touchItem(item); renderList(); scheduleSave(); }
     });
     main.addEventListener('pointerdown', e => {
       if (e.target.closest('.edit-zone')) return;
@@ -1501,7 +1548,7 @@ function attachEvents() {
         // Undertrykk det påfølgende klikket kort (selv-nullstillende, så ekte trykk senere virker).
         _suppressItemClick = true;
         setTimeout(() => { _suppressItemClick = false; }, 600);
-        item.priority = !item.priority;
+        item.priority = !item.priority; touchItem(item);
         if (navigator.vibrate) navigator.vibrate(10);
         renderList(); scheduleSave();
       }, 500);
@@ -1560,6 +1607,7 @@ function setItemStore(itemId, store) {
   item.store = store;
   if (store === 'andre') { item.kiwiSection = null; }
   else { item.andreSection = null; }
+  touchItem(item);
   rememberPlacement(item);
   openItemDrawer(itemId);
   renderList(); scheduleSave();
@@ -1569,6 +1617,7 @@ function assignItemSection(sectionId) {
   if (!item) return;
   const value = sectionId || null;
   if (item.store === 'andre') item.andreSection = value; else item.kiwiSection = value;
+  touchItem(item);
   rememberPlacement(item);
   renderSectionOptions(item);
   renderList(); scheduleSave();
@@ -1579,6 +1628,7 @@ function saveItemDetails() {
   const name = document.getElementById('itemNameInput').value.trim();
   if (name) item.text = name;
   item.occasionId = document.getElementById('itemOccasionSelect')?.value || null;
+  touchItem(item);
   rememberPlacement(item);
   closeSectionModal(); scheduleSave();
 }
@@ -1617,6 +1667,7 @@ function quickMoveTo(sectionId) {
   item.store = quickMoveStore;
   if (quickMoveStore === 'andre') { item.andreSection = sectionId; item.kiwiSection = null; }
   else { item.kiwiSection = sectionId; item.andreSection = null; }
+  touchItem(item);
   rememberPlacement(item);
   closeQuickMove();
   renderList(); scheduleSave();
@@ -1642,12 +1693,12 @@ function dragEnd(type) { dragSrcIdx = null; }
 
 // MAINTENANCE / EXPORT
 function toemVogna() {
-  listItems = listItems.filter(i => !i.checked || !isInActiveShoppingScope(i));
+  listItems.forEach(i => { if (i.checked && isInActiveShoppingScope(i) && !i.deleted) { i.deleted = true; touchItem(i); } });
   renderList(); scheduleSave();
 }
-function nyHandel() { document.getElementById('confirmModal').classList.remove('open'); listItems = []; renderList(); scheduleSave(); }
+function nyHandel() { document.getElementById('confirmModal').classList.remove('open'); listItems.forEach(i => { if (!i.deleted) { i.deleted = true; touchItem(i); } }); renderList(); scheduleSave(); }
 function isPlacementUnused(key) {
-  const onList = listItems.some(i => normalizeItemName(i.text) === key);
+  const onList = listItems.some(i => !i.deleted && normalizeItemName(i.text) === key);
   const f = preferences.favorites[key];
   const favActive = !!f && !f.deleted;
   return !onList && !favActive;
@@ -1685,7 +1736,7 @@ function renderMaintenance() {
     return `<div class="pl-row ${sel ? 'sel' : ''}" onclick="togglePlacementSel(${i})"><div class="pl-check">${sel ? '✓' : ''}</div><div class="pl-body"><div class="pl-name">${h(key)}</div><div class="pl-meta">${meta}</div></div></div>`;
   }).join('') || '<p class="panel-help">Ingen treff.</p>';
   el.innerHTML =
-    `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.length}</strong><span>anledninger</span></div><div class="metric"><strong>${favEntries.length}</strong><span>favoritter</span></div><div class="metric"><strong>${placements.length}</strong><span>lærte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div></div><p class="panel-help">Rydd i favoritter og lærte plasseringer. Sletting her påvirker ikke varene på lista.</p></div>` +
+    `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.filter(i => !i.deleted).length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.filter(o => !o.deleted).length}</strong><span>anledninger</span></div><div class="metric"><strong>${favEntries.length}</strong><span>favoritter</span></div><div class="metric"><strong>${placements.length}</strong><span>lærte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div></div><p class="panel-help">Rydd i favoritter og lærte plasseringer. Sletting her påvirker ikke varene på lista.</p></div>` +
     `<div class="maintenance-card"><h2>Favoritter</h2>` +
     `<input class="text-input" placeholder="Søk..." value="${h(favoriteSearch)}" oninput="favoriteSearch=this.value;renderMaintenance()">` +
     `<div class="raid-tools">${favShownArr.length ? `<button class="link-btn" onclick="selectAllShownFavorites()">${favAllSel ? 'Fjern alle viste' : 'Velg alle viste'}</button>` : ''}</div>` +
@@ -1740,7 +1791,7 @@ function clearAllFavorites() {
 }
 function doExport() { document.getElementById('exportText').value = JSON.stringify({ items: listItems, occasions, kiwi: kiwiSections, andre: andreSections, preferences }, null, 2); }
 function copyExport() { if (!document.getElementById('exportText').value) doExport(); const ta = document.getElementById('exportText'); ta.select(); document.execCommand('copy'); const btn = document.querySelector('#tab-export .action-btn.secondary'); const old = btn.textContent; btn.textContent = 'Kopiert'; setTimeout(() => btn.textContent = old, 2000); }
-function doImport() { try { const p = JSON.parse(document.getElementById('importText').value.trim()); if (p.items) listItems = p.items; if (p.occasions) occasions = p.occasions; if (p.kiwi) kiwiSections.splice(0, kiwiSections.length, ...p.kiwi); if (p.andre) andreSections.splice(0, andreSections.length, ...p.andre); if (p.preferences) { const imp = p.preferences; const cur = (preferences && typeof preferences === 'object') ? preferences : {}; preferences = { ...imp, favorites: mergeLwwMap(favoritesAsMap(cur.favorites), favoritesAsMap(imp.favorites)), itemPlacements: mergeLwwMap(cur.itemPlacements, imp.itemPlacements) }; } normalizeState(); document.getElementById('importText').value = ''; closePanel(); renderList(); scheduleSave(); } catch(e) { alert('Feil format.'); } }
+function doImport() { try { const p = JSON.parse(document.getElementById('importText').value.trim()); if (p.items) listItems = mergeLwwArray(listItems, p.items); if (p.occasions) occasions = mergeLwwArray(occasions, p.occasions); if (p.kiwi) kiwiSections.splice(0, kiwiSections.length, ...p.kiwi); if (p.andre) andreSections.splice(0, andreSections.length, ...p.andre); if (p.preferences) { const imp = p.preferences; const cur = (preferences && typeof preferences === 'object') ? preferences : {}; preferences = { ...imp, favorites: mergeLwwMap(favoritesAsMap(cur.favorites), favoritesAsMap(imp.favorites)), itemPlacements: mergeLwwMap(cur.itemPlacements, imp.itemPlacements) }; } normalizeState(); document.getElementById('importText').value = ''; closePanel(); renderList(); scheduleSave(); } catch(e) { alert('Feil format.'); } }
 
 // Legacy stubs
 function openStorePicker() {}
