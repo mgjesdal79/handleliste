@@ -1375,7 +1375,7 @@ function deleteOccasion(id) {
   const o = getOccasion(id);
   if (!o || !confirm('Slette anledningen? Varer kobles fra.')) return;
   occasions = occasions.filter(x => x.id !== id);
-  listItems.forEach(item => { if (item.occasionId === id) item.occasionId = null; });
+  listItems.forEach(item => { if (!item.deleted && item.occasionId === id) item.occasionId = null; });
   activeOccasionFilters.delete(id);
   if (openPanel === 'occasions') renderOccasionPanel();
   renderList(); scheduleSave();
@@ -1397,7 +1397,7 @@ function isInActiveShoppingScope(item) {
   return !item.occasionId;
 }
 function getScopedItems() {
-  return listItems.filter(isInActiveShoppingScope);
+  return listItems.filter(i => !i.deleted && isInActiveShoppingScope(i));
 }
 function renderList() {
   const start = performance.now();
@@ -1416,9 +1416,9 @@ function renderList() {
   updateOccasionBadge();
   markPerf('Render', Math.round(performance.now() - start) + ' ms');
 }
-function hasOccasionItems(occasionId) { return listItems.some(i => i.occasionId === occasionId); }
+function hasOccasionItems(occasionId) { return listItems.some(i => !i.deleted && i.occasionId === occasionId); }
 function primaryEmptyText() {
-  return listItems.some(i => i.occasionId)
+  return listItems.some(i => !i.deleted && i.occasionId)
     ? 'Ingen vanlige varer i denne butikkvisningen. Trykk på en anledning over for å vise anledningsvarer.'
     : 'Trykk <strong>+</strong> for å legge til varer.';
 }
@@ -1691,12 +1691,12 @@ function dragEnd(type) { dragSrcIdx = null; }
 
 // MAINTENANCE / EXPORT
 function toemVogna() {
-  listItems = listItems.filter(i => !i.checked || !isInActiveShoppingScope(i));
+  listItems.forEach(i => { if (i.checked && isInActiveShoppingScope(i) && !i.deleted) { i.deleted = true; touchItem(i); } });
   renderList(); scheduleSave();
 }
-function nyHandel() { document.getElementById('confirmModal').classList.remove('open'); listItems = []; renderList(); scheduleSave(); }
+function nyHandel() { document.getElementById('confirmModal').classList.remove('open'); listItems.forEach(i => { if (!i.deleted) { i.deleted = true; touchItem(i); } }); renderList(); scheduleSave(); }
 function isPlacementUnused(key) {
-  const onList = listItems.some(i => normalizeItemName(i.text) === key);
+  const onList = listItems.some(i => !i.deleted && normalizeItemName(i.text) === key);
   const f = preferences.favorites[key];
   const favActive = !!f && !f.deleted;
   return !onList && !favActive;
@@ -1734,7 +1734,7 @@ function renderMaintenance() {
     return `<div class="pl-row ${sel ? 'sel' : ''}" onclick="togglePlacementSel(${i})"><div class="pl-check">${sel ? '✓' : ''}</div><div class="pl-body"><div class="pl-name">${h(key)}</div><div class="pl-meta">${meta}</div></div></div>`;
   }).join('') || '<p class="panel-help">Ingen treff.</p>';
   el.innerHTML =
-    `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.length}</strong><span>anledninger</span></div><div class="metric"><strong>${favEntries.length}</strong><span>favoritter</span></div><div class="metric"><strong>${placements.length}</strong><span>lærte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div></div><p class="panel-help">Rydd i favoritter og lærte plasseringer. Sletting her påvirker ikke varene på lista.</p></div>` +
+    `<div class="maintenance-card"><h2>Status</h2><div class="maintenance-grid"><div class="metric"><strong>${listItems.filter(i => !i.deleted).length}</strong><span>varer</span></div><div class="metric"><strong>${occasions.length}</strong><span>anledninger</span></div><div class="metric"><strong>${favEntries.length}</strong><span>favoritter</span></div><div class="metric"><strong>${placements.length}</strong><span>lærte plasseringer</span></div><div class="metric"><strong>${Math.round(dataSize/1024)} KB</strong><span>payload</span></div></div><p class="panel-help">Rydd i favoritter og lærte plasseringer. Sletting her påvirker ikke varene på lista.</p></div>` +
     `<div class="maintenance-card"><h2>Favoritter</h2>` +
     `<input class="text-input" placeholder="Søk..." value="${h(favoriteSearch)}" oninput="favoriteSearch=this.value;renderMaintenance()">` +
     `<div class="raid-tools">${favShownArr.length ? `<button class="link-btn" onclick="selectAllShownFavorites()">${favAllSel ? 'Fjern alle viste' : 'Velg alle viste'}</button>` : ''}</div>` +
