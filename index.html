@@ -1534,7 +1534,7 @@ function attachEvents() {
       // Et nettopp utført langtrykk skal ikke også krysse av varen.
       if (_suppressItemClick) return;
       const item = listItems.find(i => i.id === row.dataset.id);
-      if (item) { item.checked = !item.checked; renderList(); scheduleSave(); }
+      if (item) { item.checked = !item.checked; touchItem(item); renderList(); scheduleSave(); }
     });
     main.addEventListener('pointerdown', e => {
       if (e.target.closest('.edit-zone')) return;
@@ -1547,7 +1547,7 @@ function attachEvents() {
         // Undertrykk det påfølgende klikket kort (selv-nullstillende, så ekte trykk senere virker).
         _suppressItemClick = true;
         setTimeout(() => { _suppressItemClick = false; }, 600);
-        item.priority = !item.priority;
+        item.priority = !item.priority; touchItem(item);
         if (navigator.vibrate) navigator.vibrate(10);
         renderList(); scheduleSave();
       }, 500);
@@ -1606,6 +1606,7 @@ function setItemStore(itemId, store) {
   item.store = store;
   if (store === 'andre') { item.kiwiSection = null; }
   else { item.andreSection = null; }
+  touchItem(item);
   rememberPlacement(item);
   openItemDrawer(itemId);
   renderList(); scheduleSave();
@@ -1615,6 +1616,7 @@ function assignItemSection(sectionId) {
   if (!item) return;
   const value = sectionId || null;
   if (item.store === 'andre') item.andreSection = value; else item.kiwiSection = value;
+  touchItem(item);
   rememberPlacement(item);
   renderSectionOptions(item);
   renderList(); scheduleSave();
@@ -1625,6 +1627,7 @@ function saveItemDetails() {
   const name = document.getElementById('itemNameInput').value.trim();
   if (name) item.text = name;
   item.occasionId = document.getElementById('itemOccasionSelect')?.value || null;
+  touchItem(item);
   rememberPlacement(item);
   closeSectionModal(); scheduleSave();
 }
@@ -1663,6 +1666,7 @@ function quickMoveTo(sectionId) {
   item.store = quickMoveStore;
   if (quickMoveStore === 'andre') { item.andreSection = sectionId; item.kiwiSection = null; }
   else { item.kiwiSection = sectionId; item.andreSection = null; }
+  touchItem(item);
   rememberPlacement(item);
   closeQuickMove();
   renderList(); scheduleSave();
